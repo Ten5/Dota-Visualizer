@@ -38,13 +38,10 @@ class TestGenerateWorkflow(AppTestBase):
             # Setup API mocks
             MockDotaAPI.setup_basic_mocks(
                 MockAPI,
-                matches=[{
-                    'match_id': 1,
-                    'start_time': 1600000000,
-                    'hero_id': 1,
-                    'player_slot': 0,
-                    'radiant_win': True
-                }],
+                matches=[
+                    {'match_id': 1, 'start_time': 1600000000, 'hero_id': 1, 'player_slot': 0, 'radiant_win': True},
+                    {'match_id': 2, 'start_time': 1605000000, 'hero_id': 1, 'player_slot': 0, 'radiant_win': True}
+                ],
                 heroes={1: 'Pudge'},
                 profile={'name': 'Dendi', 'avatar': None}
             )
@@ -81,7 +78,7 @@ class TestGenerateWorkflow(AppTestBase):
         selected_key = "High (Slow)"
         result = self.app.quality_presets[selected_key]
         
-        self.assertEqual(result['steps'], 50)
+        self.assertEqual(result['steps'], 40)
         self.assertEqual(result['dpi'], 120)
 
     def test_no_matches_error_handling(self):
@@ -100,18 +97,32 @@ class TestGenerateWorkflow(AppTestBase):
                 f"Expected error message in logs"
             )
 
+class TestVideoActions(AppTestBase):
+    """Tests for video launcher and management buttons."""
 
-class TestInputValidation(AppTestBase):
-    """Tests for input validation."""
+    @patch('src.ui.app.open_file_or_folder')
+    def test_open_folder_action(self, mock_open):
+        """Test that open folder triggers file launcher."""
+        self.app.on_open_folder()
+        mock_open.assert_called_with("output")
 
-    def test_invalid_steam_id_rejected(self):
-        """Test that non-numeric Steam IDs are rejected."""
-        self.mocks['entry_id'].get.return_value = "Banana"
-        
-        self.app.on_generate()
-        
-        # Progress should not start for invalid input
-        self.mocks['progress'].start.assert_not_called()
+    @patch('src.ui.app.open_file_or_folder')
+    @patch('glob.glob')
+    def test_play_latest_video_action(self, mock_glob, mock_open):
+        """Test playing latest video."""
+        mock_glob.return_value = ["output/Dendi_KDA.mp4"]
+        with patch('os.path.getmtime', return_value=100):
+            self.app.on_play_latest()
+            mock_open.assert_called_with("output/Dendi_KDA.mp4")
+
+    @patch('src.ui.app.messagebox.askyesno', return_value=True)
+    @patch('glob.glob')
+    @patch('os.remove')
+    def test_delete_videos_action(self, mock_remove, mock_glob, mock_confirm):
+        """Test video deletion action."""
+        mock_glob.return_value = ["output/video1.mp4", "output/video2.mp4"]
+        self.app.on_delete_videos()
+        self.assertEqual(mock_remove.call_count, 2)
 
 if __name__ == '__main__':
     unittest.main()

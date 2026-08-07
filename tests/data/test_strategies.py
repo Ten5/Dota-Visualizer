@@ -62,13 +62,21 @@ class TestWinRateStrategy(StrategyTestBase):
     """Tests for WinRateStrategy."""
 
     def test_win_rate_calculation(self):
-        """Test that win rates are calculated correctly as percentages."""
+        """Test that win rates are calculated correctly for heroes with >= 3 games, and 0 for < 3 games."""
+        # Create 3 matches for Anti-Mage (2 wins, 1 loss = 66.67%), 2 matches for Axe (< 3 games = 0%)
+        matches = [
+            {'match_id': 1, 'start_time': 1577836800, 'hero_id': 1, 'player_slot': 0, 'radiant_win': True},
+            {'match_id': 2, 'start_time': 1580515200, 'hero_id': 1, 'player_slot': 128, 'radiant_win': True},
+            {'match_id': 3, 'start_time': 1580601600, 'hero_id': 1, 'player_slot': 0, 'radiant_win': True},
+            {'match_id': 4, 'start_time': 1580688000, 'hero_id': 2, 'player_slot': 0, 'radiant_win': True},
+            {'match_id': 5, 'start_time': 1580774400, 'hero_id': 2, 'player_slot': 0, 'radiant_win': True},
+        ]
         strategy = WinRateStrategy()
-        df, year = strategy.process(self.mock_matches, self.hero_map)
+        df, year = strategy.process(matches, self.hero_map)
         
         assert_dataframe_last_row(self, df, {
-            'Anti-Mage': 50.0,   # 1 win / 2 games = 50%
-            'Axe': 100.0         # 1 win / 1 game = 100%
+            'Anti-Mage': 66.66666666666666, # 2 wins / 3 games
+            'Axe': 0.0                       # < 3 games threshold
         })
 
 

@@ -18,10 +18,11 @@ class DotaAPITestBase(unittest.TestCase):
         self._clear_api_cache()
     
     def _clear_api_cache(self):
-        """Helper to clear all DotaAPI caches."""
-        DotaAPI._match_cache = {}
+        """Helper to clear all DotaAPI caches including SQLite DB."""
+        DotaAPI.clear_cache()
         DotaAPI._hero_map_cache = None
-        DotaAPI._profile_cache = {}
+        DotaAPI._item_map_cache = None
+        DotaAPI._role_map_cache = None
 
 
 class TestHeroMap(DotaAPITestBase):

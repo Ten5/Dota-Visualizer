@@ -1,7 +1,10 @@
 import requests
 import time
+import os
 from io import BytesIO
 from PIL import Image
+
+from src.data.db import DotaDB
 
 class DotaAPI:
     BASE_URL = "https://api.opendota.com/api"
@@ -72,9 +75,16 @@ class DotaAPI:
     def get_player_profile(player_id):
         """
         Returns a dict: {'name': 'Dendi', 'avatar': PIL_Image}
+        Checks in-memory cache first, then SQLite database, then OpenDota API.
         """
         if player_id in DotaAPI._profile_cache:
             return DotaAPI._profile_cache[player_id]
+
+        # Check SQLite DB
+        db_profile = DotaDB.get_profile(player_id)
+        if db_profile:
+            DotaAPI._profile_cache[player_id] = db_profile
+            return db_profile
 
         profile_data = {'name': f"Player {player_id}", 'avatar': None}
 
@@ -83,19 +93,17 @@ class DotaAPI:
             data = requests.get(url).json()
             profile = data.get('profile', {})
             
-            # 1. Get Name (personaname)
             if 'personaname' in profile:
                 profile_data['name'] = profile['personaname']
             
-            # 2. Get Avatar
             avatar_url = profile.get('avatarfull')
             if avatar_url:
                 resp = requests.get(avatar_url)
                 img = Image.open(BytesIO(resp.content))
                 profile_data['avatar'] = img
                 
-            # Save to cache
             DotaAPI._profile_cache[player_id] = profile_data
+            DotaDB.save_profile(player_id, profile_data['name'], profile_data['avatar'])
             
         except Exception as e:
             print(f"Error fetching profile: {e}")
@@ -105,18 +113,26 @@ class DotaAPI:
     @staticmethod
     def fetch_all_matches(player_id, log_callback=None):
         """
-        Checks cache first. If found, returns instantly.
-        If not, fetches all pages, saves to cache, and returns.
+        Checks memory cache first, then SQLite disk database.
+        Performs incremental fetch for any new matches played since last cache sync.
         """
-        # 1. CHECK CACHE
+        # 1. CHECK IN-MEMORY CACHE
         if player_id in DotaAPI._match_cache:
             if log_callback:
-                log_callback(f"Using cached data for {player_id} (Instant load)...")
+                log_callback(f"Using memory-cached data for {player_id}...")
             return DotaAPI._match_cache[player_id]
 
-        # 2. FETCH IF NOT IN CACHE
-        all_matches = []
+        # 2. CHECK SQLITE DB
+        cached_db_matches = DotaDB.get_matches(player_id)
+        latest_match_id = DotaDB.get_latest_match_id(player_id)
+
+        if cached_db_matches and log_callback:
+            log_callback(f"Loaded {len(cached_db_matches)} matches from local database. Checking for updates...")
+
+        # 3. INCREMENTAL API FETCH
+        new_matches = []
         offset = 0
+        should_stop = False
         
         while True:
             url = f"{DotaAPI.BASE_URL}/players/{player_id}/matches"
@@ -126,43 +142,55 @@ class DotaAPI:
                 resp = requests.get(url, params=params)
                 data = resp.json()
                 
-                if not data: break
+                if not data or not isinstance(data, list): break
                 
-                # Check for infinite loops (API safety)
-                if all_matches and data[0]['match_id'] == all_matches[0]['match_id']:
-                    break
+                # Check for incremental stop condition or infinite loops
+                for match in data:
+                    if latest_match_id and match.get('match_id') and match['match_id'] <= latest_match_id:
+                        should_stop = True
+                        break
+                    new_matches.append(match)
 
-                all_matches.extend(data)
+                if should_stop: break
+
                 offset += len(data)
 
-                if log_callback:
-                    log_callback(f"Fetching from API: {len(all_matches)} matches...")
+                if log_callback and new_matches:
+                    log_callback(f"Fetched {len(new_matches)} new matches from API...")
                 
-                if len(data) < 1000:
-                    break
-                    
-                time.sleep(0.5) # Be nice to the API
+                if len(data) < 1000: break
+                time.sleep(0.5) # Be nice to OpenDota API
                 
             except Exception as e:
-                if log_callback: log_callback(f"API Error: {e}")
+                if log_callback: log_callback(f"API Sync Info/Warning: {e}")
                 break
-        
-        # Deduplicate
-        unique_matches = list({m['match_id']: m for m in all_matches}.values())
-        
-        # 3. SAVE TO CACHE
-        DotaAPI._match_cache[player_id] = unique_matches
+
+        # Save new matches to SQLite database
+        if new_matches:
+            DotaDB.save_matches(player_id, new_matches)
+            if log_callback:
+                log_callback(f"Saved {len(new_matches)} new matches to local database.")
+
+        # Reload complete match set from SQLite
+        all_matches = DotaDB.get_matches(player_id)
+        if not all_matches:
+            all_matches = new_matches
+
+        # Save to in-memory cache
+        DotaAPI._match_cache[player_id] = all_matches
         
         if log_callback:
-            log_callback(f"Download complete. Cached {len(unique_matches)} matches in memory.")
+            log_callback(f"Ready! Total {len(all_matches)} matches loaded.")
             
-        return unique_matches
+        return all_matches
 
     @staticmethod
     def clear_cache():
-        """Optional: Call this if you add a 'Clear Data' button later"""
+        """Clears memory and SQLite disk caches."""
         DotaAPI._match_cache.clear()
-        DotaAPI._avatar_cache.clear()
+        DotaAPI._profile_cache.clear()
+        if os.path.exists(DotaDB.DB_PATH):
+            os.remove(DotaDB.DB_PATH)
 
     @staticmethod
     def download_hero_images(hero_map, output_dir="assets/hero_images"):

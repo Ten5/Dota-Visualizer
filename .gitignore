@@ -1,2 +1,19 @@
+# Python / Virtualenv
+*.pyc
+__pycache__/
+dota-env/
+venv/
+.idea/
+.vscode/
+
+# Media & Generated Output (Do not commit to GitHub)
+output/
+output/*
+cache/
+scratch/
 *.mp4
-./output/
+*.db
+
+# Temporary Test Hero Icons
+assets/hero_images/Hero_*.png
+assets/hero_images/Largo.png

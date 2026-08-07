@@ -1,36 +1,35 @@
 # ⚙️ Technical Architecture
 
 ## 1. System Overview
-The application follows a **Model-View-Controller (MVC)** lite pattern:
-* **UI (`src/ui`):** Handles user input using `CustomTkinter`.
-* **Data (`src/data`):** Fetches, cleans, and processes Dota 2 data.
-* **Visualizer (`src/visualizer`):** Renders the video using `Matplotlib`.
+The application follows a modular **Model-View-Controller (MVC)** architecture with flexible local execution entry points (GUI, CLI, Standalone Bundle):
+- **View / UI ([`src/ui/app.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/ui/app.py)):** Desktop GUI built with `CustomTkinter`. Configured with centered window hints, window app icons (`assets/icon.png`), direct file/media launchers, and background thread dispatching.
+- **Headless CLI ([`cli.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/cli.py)):** Command-line entry point for automated headless video rendering.
+- **Model / Data ([`src/data`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/data)):** OpenDota REST API integration (`api.py`), SQLite disk database manager (`db.py`), and 11 statistical strategy implementations (`strategies.py`).
+- **Controller / Visualizer ([`src/visualizer/engine.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/visualizer/engine.py)):** Native OpenCV 2D canvas drawing engine with 32-color palette rotation, FFmpeg hardware acceleration piping (`h264_videotoolbox` / `nvenc`), and MoviePy audio/buffer post-processing.
+- **Packaging ([`build.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/build.py)):** PyInstaller standalone packaging build script.
+
+---
 
 ## 2. Key Components
 
-### A. The Runtime Patch (`src/visualizer/patch.py`)
-The standard `bar_chart_race` library lacks image support and crashes with modern Matplotlib versions. Instead of forking the library, we use **Runtime Monkey Patching**:
-1.  **Icon Injection:** We override `_label_bars` to draw `AnnotationBbox` (images) next to the bars.
-2.  **Crash Fix:** We override `make_animation` to fix an FPS argument conflict in Matplotlib `FuncAnimation`.
-*Benefit:* The app works with standard `pip install` without needing complex custom library builds.
+### A. Dedicated Window & Application Icon ([`assets/icon.png`](file:///Users/ten5/Documents/GitHub/dota_visualizer/assets/icon.png))
+- High-resolution glassmorphism application icon featuring a golden Dota 2 crest integrated with glowing bar chart race lines.
+- CustomTkinter window icon bindings (`wm_iconphoto`) and screen-centering calculations (`760x780` geometry).
 
-### B. The Strategy Pattern (`src/data/strategies.py`)
-We use the **Strategy Design Pattern** for extensibility.
-* **`DataStrategy` (Base Class):** Handles common logic like `_filter_static_months`.
-* **Concrete Strategies:** Classes like `KDAStrategy` contain specific math.
-* **Optimization:** `_filter_static_months` detects rows where data hasn't changed (idle months) and drops them, reducing rendering time by 50-80% for returning players.
+### B. High-Performance OpenCV Video Engine ([`src/visualizer/engine.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/visualizer/engine.py))
+- **32-Color Palette:** Rotates among 32 distinct, vibrant colors for maximum visual contrast.
+- **Frame Interpolation:** Linearly interpolates values and continuous Y-position ranks across time periods using Smoothstep easing ($\text{ease}(\alpha) = 3\alpha^2 - 2\alpha^3$).
+- **On-Bar Legends:** Draws hero PNG icons and names directly onto horizontal bars with dark text shadows for contrast.
+- **Scalable Typography:** Scalable TrueType fonts for title (34pt), subtitle (20pt), date overlay (54pt bold), and metric values (20pt).
+- **Hardware Acceleration Pipe:** Pipes raw BGR24 frame bytes directly into FFmpeg subprocess (`h264_videotoolbox` / `nvenc`).
 
-### C. In-Memory Caching (`src/data/api.py`)
-* **Match Cache:** `_match_cache` stores the full JSON history. Switching from "KDA" to "Gold" is instant.
-* **Asset Cache:** Hero Icons are downloaded once to `assets/hero_images` and reused.
+### C. SQLite Caching & Incremental Sync ([`src/data/db.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/data/db.py))
+- Stores match history (`matches` table) and player profile avatars (`profiles` table) in `cache/dota_visualizer.db`.
+- Loads cached player data in **< 0.05 seconds**.
 
-## 3. Rendering Engine
-* **Headless Mode:** `matplotlib.use('Agg')` prevents macOS freezing by rendering in memory.
-* **Progress Tracking:** We inject a custom `ProgressVideoWriter` into Matplotlib to calculate real % completion (Frame N / Total Frames).
+---
 
-## 4. Dependencies
-* **CustomTkinter:** UI.
-* **Pandas:** Data Processing.
-* **Requests:** API.
-* **Matplotlib + Bar_Chart_Race:** Visualization.
-* **MoviePy:** Post-processing (Audio/Buffers).
+## 3. Deployment & Packaging Architecture
+
+### PyInstaller Build (`build.py`)
+Compiles `main.py` into a self-contained executable bundle with embedded `assets/` and `cache/` dependencies.

@@ -70,6 +70,7 @@ def setup_fake_customtkinter():
     
     # Assign fake classes
     fake_ctk_module.CTk = FakeCTk
+    fake_ctk_module.CTkFrame = FakeWidget
     fake_ctk_module.CTkButton = FakeWidget
     fake_ctk_module.CTkEntry = FakeWidget
     fake_ctk_module.CTkLabel = FakeWidget
@@ -82,6 +83,12 @@ def setup_fake_customtkinter():
     
     # Inject into sys.modules
     sys.modules['customtkinter'] = fake_ctk_module
+
+    fake_msg_module = types.ModuleType("tkinter.messagebox")
+    fake_msg_module.showinfo = MagicMock()
+    fake_msg_module.showwarning = MagicMock()
+    fake_msg_module.askyesno = MagicMock(return_value=True)
+    sys.modules['tkinter.messagebox'] = fake_msg_module
     
     return fake_ctk_module
 
