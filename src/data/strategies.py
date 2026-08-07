@@ -329,3 +329,52 @@ class TotalGoldStrategy(DataStrategy):
         pivot = df.pivot_table(index='date', columns='hero_name', values='gold_mil', aggfunc='sum').fillna(0)
         cumulative = pivot.resample('ME').sum().cumsum().ffill()
         return self._filter_static_months(cumulative), start_year
+
+# --- 13. HERO VERSATILITY ---
+class HeroVersatilityStrategy(DataStrategy):
+    @property
+    def name(self): return "Hero Versatility (Unique Played)"
+    def process(self, matches, hero_map):
+        df, start_year = self._get_base_df(matches, hero_map)
+        if df.empty:
+            return pd.DataFrame(), start_year
+        
+        df['count'] = 1
+        pivot = df.pivot_table(index='date', columns='hero_name', values='count', aggfunc='sum').fillna(0)
+        # Cumulative games per hero
+        cum = pivot.resample('ME').sum().cumsum().ffill()
+        return self._filter_static_months(cum), start_year
+
+# --- DOTA 2 PATCH MAPPER ---
+DOTA_PATCHES = [
+    (pd.to_datetime('2015-04-30'), "Patch 6.84"),
+    (pd.to_datetime('2015-09-24'), "Patch 6.85"),
+    (pd.to_datetime('2015-12-16'), "Patch 6.86"),
+    (pd.to_datetime('2016-12-12'), "Patch 7.00 - New Journey"),
+    (pd.to_datetime('2017-10-31'), "Patch 7.07 - Dueling Fates"),
+    (pd.to_datetime('2018-11-19'), "Patch 7.20"),
+    (pd.to_datetime('2019-11-26'), "Patch 7.23 - Outlanders"),
+    (pd.to_datetime('2020-12-17'), "Patch 7.28 - Mistwoods"),
+    (pd.to_datetime('2021-08-18'), "Patch 7.30"),
+    (pd.to_datetime('2022-02-23'), "Patch 7.31 - Primal Beast"),
+    (pd.to_datetime('2023-04-20'), "Patch 7.33 - New Frontiers"),
+    (pd.to_datetime('2023-12-14'), "Patch 7.35 - Frostivus"),
+    (pd.to_datetime('2024-05-22'), "Patch 7.36 - Facets"),
+    (pd.to_datetime('2024-08-04'), "Patch 7.37"),
+]
+
+def get_dota_patch_name(dt):
+    """Returns the active Dota 2 Patch name for a given date string or Timestamp."""
+    if not isinstance(dt, pd.Timestamp):
+        try:
+            dt = pd.to_datetime(dt)
+        except Exception:
+            return ""
+    
+    current_patch = ""
+    for patch_date, patch_name in DOTA_PATCHES:
+        if dt >= patch_date:
+            current_patch = patch_name
+        else:
+            break
+    return current_patch

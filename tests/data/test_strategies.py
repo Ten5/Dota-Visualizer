@@ -5,7 +5,8 @@ from src.data.strategies import (
     MatchesPlayedStrategy, 
     WinsStrategy, 
     WinRateStrategy,
-    ItemRaceStrategy
+    ItemRaceStrategy,
+    HeroVersatilityStrategy
 )
 from tests.test_utils import (
     create_sample_matches,
@@ -96,6 +97,19 @@ class TestItemRaceStrategy(StrategyTestBase):
             'Blink Dagger': 2,
             'Black King Bar': 1
         })
+
+
+class TestHeroVersatilityStrategy(StrategyTestBase):
+    """Tests for HeroVersatilityStrategy."""
+
+    def test_versatility_processing(self):
+        """Test that hero versatility processes valid accumulative DataFrame."""
+        strategy = HeroVersatilityStrategy()
+        df, year = strategy.process(self.mock_matches, self.hero_map)
+        self.assertFalse(df.empty)
+        self.assertIn('Anti-Mage', df.columns)
+        self.assertIn('Axe', df.columns)
+
 
 if __name__ == '__main__':
     unittest.main()
