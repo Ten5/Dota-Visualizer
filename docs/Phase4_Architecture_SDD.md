@@ -1,7 +1,7 @@
 # Software Design Description (SDD) & Domain-Driven Design (DDD)
 ## Phase 4: Revamped Web Architecture, Decoupled Backend, & Ephemeral Media Storage
 
-**Document Version:** 4.0.0  
+**Document Version:** 4.1.0  
 **Status:** Approved Architecture Specification  
 **Target Environment:** Distributed Cloud Web Architecture (Vercel FE + FastAPI BE + Redis Worker + Docker)
 
@@ -13,10 +13,16 @@ Phase 4 transforms the Dota 2 History Visualizer from a monolithic desktop Pytho
 
 ### Core Architectural Principles:
 1. **Offline-First & Smart Ingestion:** Immediate cache loading (<0.01s) with background incremental API synchronization.
-2. **Decoupled Backend & Frontend:** Fast, modern SPA/SSR frontend (React / Next.js) interacting with a high-performance Python FastAPI backend via REST and Server-Sent Events (SSE).
-3. **Zero-Server-Bloat Ephemeral Media Storage:** Rendered MP4 videos are held in transient memory/storage for immediate browser streaming and client download, with automated **1-hour TTL auto-purge**. Server disk usage remains near 0 MB.
-4. **Containerized Worker Queue:** Heavy OpenCV and FFmpeg video rendering offloaded to async worker queues (Celery + Redis) running in isolated Docker containers.
-5. **Security & Free-Tier Cloud Compatibility:** API Key authentication, rate limiting, and CORS security designed for deployment on free cloud tiers (Render, Railway, Cloudflare, Vercel).
+2. **Hybrid Authentication Model:**
+   - **Public Lookup (Zero Friction):** Anyone can enter any 32-bit Steam ID (friends, pro players, content creators) to render public stats.
+   - **Steam OpenID Authentication:** Optional Valve Steam login unlocking personal dashboards, custom music uploads, favorite theme preferences, and access to private Dota 2 profiles.
+3. **Decoupled Backend & Frontend:** Fast, modern SPA/SSR frontend (React / Next.js) interacting with a high-performance Python FastAPI backend via REST and Server-Sent Events (SSE).
+4. **Raw JSON Retention + LRU Cache Pruning Engine:**
+   - Full `raw_json` payload retained in database tables to guarantee future extensibility for newly created visualization strategies.
+   - Automatic **Least Recently Used (LRU) Database Pruning Task**: If database storage approaches tier limits (e.g. >80% capacity), automatically evicts raw match history for inactive public lookups (unaccessed for >90 days). If requested again, data re-populates dynamically.
+5. **Zero-Server-Bloat Ephemeral Media Storage:** Rendered MP4 videos are held in transient storage for immediate browser streaming and client download, with automated **1-hour TTL auto-purge**. Server disk usage remains near 0 MB.
+6. **Containerized Worker Queue:** Heavy OpenCV and FFmpeg video rendering offloaded to async worker queues (Celery + Redis) running in isolated Docker containers.
+7. **Security & Free-Tier Cloud Compatibility:** API Key authentication, rate limiting, and CORS security designed for deployment on free cloud tiers (Render, Railway, Cloudflare, Vercel).
 
 ---
 
@@ -26,7 +32,8 @@ Phase 4 transforms the Dota 2 History Visualizer from a monolithic desktop Pytho
 graph TD
     subgraph Ingestion_Context["Match Ingestion Context"]
         API_Fetcher["OpenDota API Adapter"]
-        DB_Store["Match Repository"]
+        DB_Store["Match Repository (Raw JSON + Schema)"]
+        LRU_Pruner["LRU Cache Pruner (90-Day Inactive Eviction)"]
     end
 
     subgraph Analytics_Context["Analytics Context"]
@@ -41,25 +48,28 @@ graph TD
     end
 
     subgraph Security_Context["Security & Auth Context"]
+        Steam_OpenID["Steam OpenID Authenticator"]
         Rate_Limiter["Rate Limiter (SlowAPI)"]
-        API_Guard["API Key / JWT Authenticator"]
+        API_Guard["API Key / JWT Session Manager"]
     end
 
     API_Fetcher --> DB_Store
+    DB_Store --> LRU_Pruner
     DB_Store --> Strategy_Engine
     Strategy_Engine --> Time_Series
     Time_Series --> Canvas_Drawer
     Canvas_Drawer --> FFmpeg_Encoder
     FFmpeg_Encoder --> Audio_Mixer
+    Steam_OpenID --> API_Guard
     API_Guard --> Rate_Limiter
 ```
 
 ### 2.1 Bounded Contexts
 
 #### A. Match Ingestion & Cache Context
-- **Responsibility:** Interfacing with OpenDota API, managing local SQLite/PostgreSQL database storage, executing incremental match fetching, and persisting hero/item constants.
+- **Responsibility:** Interfacing with OpenDota API, storing `raw_json` payloads alongside structured schema fields in SQLite/PostgreSQL, executing background incremental match fetching, and running automated 90-day LRU cache pruning.
 - **Aggregates:** `PlayerMatchHistory`
-- **Entities:** `Match`, `PlayerProfile`, `HeroConstant`, `ItemConstant`
+- **Entities:** `Match` (stores `raw_json`), `PlayerProfile`, `HeroConstant`, `ItemConstant`
 
 #### B. Analytics & Strategy Context
 - **Responsibility:** Computing cumulative time-series dataframes across all 13 strategy metrics (`MatchesPlayed`, `HeroVersatility`, `TotalGold`, `KDA`, etc.), enforcing minimum game thresholds, and calculating dynamic start years.
@@ -72,13 +82,15 @@ graph TD
 - **Value Objects:** `CanvasDimensions` (16:9 vs 9:16), `ThemePalette`, `RenderPreset`
 
 #### D. Security, Auth, & Storage Context
-- **Responsibility:** API Key validation, IP rate limiting, CORS management, generating ephemeral streaming tokens, and auto-purging expired media files.
-- **Entities:** `ApiKey`, `EphemeralToken`, `MediaAsset`
+- **Responsibility:** Managing Valve Steam OpenID 2.0 authentication, issuing JWT session tokens, enforcing IP rate limits, validating API keys, and purging expired transient MP4 videos.
+- **Entities:** `SteamUser`, `ApiKey`, `EphemeralToken`, `MediaAsset`
 
 ---
 
 ### 2.2 Domain Events
+- `UserAuthenticatedViaSteam(steam_id64, display_name)`
 - `MatchHistorySynced(player_id, new_matches_count)`
+- `InactiveCachePruned(player_id, pruned_matches_count)`
 - `RenderJobEnqueued(job_id, player_id, metric, aspect_ratio, theme)`
 - `RenderProgressUpdated(job_id, progress_percentage)`
 - `VideoRenderCompleted(job_id, video_url, expires_at)`
@@ -95,15 +107,17 @@ graph TB
     User["Web Browser Client (User)"]
     FE["Frontend Web App (Next.js / Tailwind)"]
     API["Backend Gateway (FastAPI REST & SSE)"]
+    Steam["Steam OpenID 2.0 Provider"]
     Redis[("Redis Queue & Cache")]
     Worker["Render Worker (Celery + OpenCV + FFmpeg)"]
-    DB[("PostgreSQL / SQLite Storage")]
+    DB[("PostgreSQL / SQLite Storage (with Raw JSON)")]
     Storage["Ephemeral Media Dir (1-Hr Auto-Purge)"]
     OpenDota["External OpenDota API"]
 
     User -->|HTTP / React| FE
+    FE -->|Auth Redirect| Steam
     FE -->|REST API / SSE Progress| API
-    API -->|Read / Write Matches| DB
+    API -->|Read / Write Matches & Raw JSON| DB
     API -->|Enqueue Render Job| Redis
     API -->|Fetch Incremental Matches| OpenDota
     Worker -->|Fetch Job| Redis
@@ -116,19 +130,13 @@ graph TB
 
 ## 4. Decoupled Backend & Frontend Architecture
 
-### 4.1 Frontend Architecture (React / Next.js)
-- **Framework:** Next.js (App Router) + TailwindCSS + Lucide Icons.
-- **Features:**
-  - Responsive Video Studio Interface (Desktop & Mobile web views).
-  - Interactive **Live Canvas Preview** (renders 1-frame snapshots on metric/theme change).
-  - Real-time **SSE Progress Bar** (Server-Sent Events streaming render status % live).
-  - Built-in HTML5 Video Player with instant client-side MP4 download button.
-  - Zero permanent server storage: video is streamed into browser memory (`Blob` URL) and downloaded to client device.
+### 4.1 Hybrid Auth Architecture (Steam OpenID + Public Steam ID)
+1. **Public Mode (Default)**: Enter any 32-bit Steam ID (`70388657`) for instant zero-friction video generation.
+2. **Steam OpenID Mode**: Click "Sign in with Steam" to verify identity, access private match data, save custom music uploads, and store custom default themes.
 
-### 4.2 Backend Architecture (FastAPI + Async Workers)
-- **Framework:** FastAPI (Python 3.11/3.12).
-- **Task Queue:** Celery with Redis broker for background video rendering.
-- **Rendering Engine:** Native OpenCV + FFmpeg hardware acceleration inside Linux Docker containers.
+### 4.2 Raw JSON Retention & LRU Pruning Specification
+- **Raw JSON Preservation:** Every match row stores full `raw_json` text column to ensure 100% forward compatibility for future visualization strategies.
+- **LRU Cache Pruner Cron:** A daily scheduled Celery task monitors database size. If storage exceeds 80% capacity, it evicts `raw_json` and match rows for public lookups whose `last_accessed_at` timestamp is older than 90 days.
 
 ---
 
@@ -146,13 +154,12 @@ To allow hosting on free cloud servers (e.g. Render, Railway, Fly.io) without ru
                                 Deletes any file older than 60 minutes
 ```
 
-1. **Transient Output Directory:** Rendered MP4 files are saved with a unique UUID (`job_id`).
-2. **Ephemeral Stream Endpoint:** `/api/v1/videos/{job_id}` serves the MP4 file for browser streaming and direct download.
-3. **Automated Purge Cron:** Background task purges any video file older than 1 hour. Disk usage stays under 50 MB regardless of traffic volume.
-
 ---
 
 ## 6. API Endpoint Specification
+
+### `GET /auth/steam/login` & `GET /auth/steam/callback`
+Handles Steam OpenID 2.0 authentication flow and returns a JWT session token.
 
 ### `POST /api/v1/players/{player_id}/sync`
 Triggers incremental match sync from OpenDota.
@@ -181,91 +188,18 @@ Enqueues a video render task.
   "custom_audio_id": null
 }
 ```
-- **Response:**
-```json
-{
-  "job_id": "9b1deb4d-3b7d-4b69-9141-c1e087f9859f",
-  "status": "QUEUED",
-  "estimated_duration_sec": 12
-}
-```
-
-### `GET /api/v1/render/jobs/{job_id}/status` (SSE Supported)
-Returns real-time render progress percentage.
-- **Response:**
-```json
-{
-  "job_id": "9b1deb4d-3b7d-4b69-9141-c1e087f9859f",
-  "status": "PROCESSING",
-  "progress_percent": 72,
-  "video_url": null
-}
-```
-
-### `GET /api/v1/videos/{job_id}`
-Streams the rendered MP4 video or triggers browser file download (`Content-Disposition: attachment`).
 
 ---
 
-## 7. Security & Free-Tier Hosting Specification
-
-### 7.1 Security Architecture
-1. **API Key Authentication:** Header validation (`X-API-Key`) for API access.
-2. **Rate Limiting:** IP-based rate limiting via SlowAPI (e.g. Max 5 render jobs per 15 minutes per IP address).
-3. **CORS Protection:** Configured origins for allowed web frontend domains.
-4. **Input Sanitization:** Strict regex verification on 32-bit Steam IDs and metric parameter strings.
-
-### 7.2 Docker Compose Architecture (`docker-compose.yml`)
-
-```yaml
-version: '3.8'
-
-services:
-  api:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.api
-    ports:
-      - "8000:8000"
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=sqlite:///./cache/dota_visualizer.db
-      - API_SECRET_KEY=${API_SECRET_KEY}
-    depends_on:
-      - redis
-
-  worker:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.worker
-    command: celery -A app.tasks worker --loglevel=info
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=sqlite:///./cache/dota_visualizer.db
-    volumes:
-      - tmp_renders:/tmp/renders
-    depends_on:
-      - redis
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
-volumes:
-  tmp_renders:
-```
-
----
-
-## 8. Implementation Roadmap (Phase 4 Tasks)
+## 7. Implementation Roadmap (Phase 4 Tasks)
 
 | Task ID | Component | Description | Format |
 |---|---|---|---|
-| **P4-01** | Backend Infrastructure | FastAPI app setup with SQLite/PostgreSQL ORM & DB models | DDD Domain Layer |
-| **P4-02** | Ingestion Engine | Offline-first smart sync with 24h TTL and OpenDota adapter | Ingestion Context |
-| **P4-03** | Celery Worker Queue | Redis queue setup for async background video rendering | Rendering Context |
-| **P4-04** | Security System | API key auth, CORS policy, and SlowAPI rate limiting | Security Context |
-| **P4-05** | Ephemeral Purge | Automated background cron purging MP4 files > 1 hour old | Storage Context |
-| **P4-06** | Frontend Web App | React / Next.js SPA with live preview, SSE progress bar & MP4 download | Web UI |
-| **P4-07** | Docker Deployment | Dockerfile & docker-compose configurations for cloud hosting | DevOps |
+| **P4-01** | Backend Infrastructure | FastAPI app setup with SQLite/PostgreSQL ORM & raw_json DB models | DDD Domain Layer |
+| **P4-02** | Ingestion & LRU Pruning | Offline-first smart sync + 90-day LRU cache eviction task | Ingestion Context |
+| **P4-03** | Steam OpenID Auth | Steam OpenID 2.0 login integration & JWT session manager | Auth Context |
+| **P4-04** | Celery Worker Queue | Redis queue setup for async background video rendering | Rendering Context |
+| **P4-05** | Security System | API key auth, CORS policy, and SlowAPI rate limiting | Security Context |
+| **P4-06** | Ephemeral Purge | Automated background cron purging MP4 files > 1 hour old | Storage Context |
+| **P4-07** | Frontend Web App | Next.js SPA with Steam login, public lookup, live preview & MP4 download | Web UI |
+| **P4-08** | Docker Deployment | Dockerfile & docker-compose configurations for cloud hosting | DevOps |
