@@ -11,7 +11,8 @@ from src.data.api import DotaAPI
 from src.data.strategies import (
     MatchesPlayedStrategy, WinsStrategy, WinRateStrategy, Top20WinRateStrategy,
     ItemRaceStrategy, RoleEvolutionStrategy, KDAStrategy, TowerDamageStrategy, 
-    LaneStrategy, DamageDealtStrategy, TotalDeathsStrategy, TotalGoldStrategy
+    LaneStrategy, DamageDealtStrategy, TotalDeathsStrategy, TotalGoldStrategy,
+    HeroVersatilityStrategy
 )
 from src.visualizer.engine import VideoEngine
 
@@ -73,7 +74,8 @@ class DotaRaceApp(ctk.CTk):
             "Laning Preference": LaneStrategy,
             "Total Damage (Millions)": DamageDealtStrategy,
             "Total Deaths": TotalDeathsStrategy,
-            "Total Gold (Millions)": TotalGoldStrategy
+            "Total Gold (Millions)": TotalGoldStrategy,
+            "Hero Versatility": HeroVersatilityStrategy
         }
         
         self.filename_map = {
@@ -87,7 +89,8 @@ class DotaRaceApp(ctk.CTk):
             "Laning Preference": "Lanes",
             "Total Damage (Millions)": "Damage",
             "Total Deaths": "Deaths",
-            "Total Gold (Millions)": "Gold"
+            "Total Gold (Millions)": "Gold",
+            "Hero Versatility": "Versatility"
         }
 
         self.quality_presets = {
@@ -98,6 +101,7 @@ class DotaRaceApp(ctk.CTk):
         }
         
         self.latest_generated_video = None
+        self.custom_audio_path = None
         self.create_widgets()
 
     def create_widgets(self):
@@ -125,26 +129,42 @@ class DotaRaceApp(ctk.CTk):
 
         # Steam ID Row
         id_frame = ctk.CTkFrame(self.controls_card, fg_color="transparent")
-        id_frame.pack(fill="x", padx=15, pady=(15, 5))
+        id_frame.pack(fill="x", padx=15, pady=(12, 4))
         ctk.CTkLabel(id_frame, text="Steam ID (32-bit):", font=("Helvetica", 13, "bold"), width=140, anchor="w").pack(side="left")
         self.entry_id = ctk.CTkEntry(id_frame, placeholder_text="e.g. 70388657", width=340)
         self.entry_id.pack(side="left", fill="x", expand=True)
 
         # Metric Row
         metric_frame = ctk.CTkFrame(self.controls_card, fg_color="transparent")
-        metric_frame.pack(fill="x", padx=15, pady=5)
+        metric_frame.pack(fill="x", padx=15, pady=4)
         ctk.CTkLabel(metric_frame, text="Select Metric:", font=("Helvetica", 13, "bold"), width=140, anchor="w").pack(side="left")
         self.strategy_var = ctk.StringVar(value="Matches Played")
         self.dropdown = ctk.CTkOptionMenu(metric_frame, values=list(self.strategies.keys()), variable=self.strategy_var, width=340)
         self.dropdown.pack(side="left", fill="x", expand=True)
 
-        # Quality Row
+        # Aspect Ratio & Theme Row
+        opts_frame = ctk.CTkFrame(self.controls_card, fg_color="transparent")
+        opts_frame.pack(fill="x", padx=15, pady=4)
+        ctk.CTkLabel(opts_frame, text="Aspect Ratio & Theme:", font=("Helvetica", 13, "bold"), width=140, anchor="w").pack(side="left")
+        
+        self.aspect_var = ctk.StringVar(value="16:9 Landscape")
+        self.aspect_dropdown = ctk.CTkOptionMenu(opts_frame, values=["16:9 Landscape", "9:16 Vertical Shorts"], variable=self.aspect_var, width=165)
+        self.aspect_dropdown.pack(side="left", padx=(0, 10))
+
+        self.theme_var = ctk.StringVar(value="Dire Crimson")
+        self.theme_dropdown = ctk.CTkOptionMenu(opts_frame, values=["Dire Crimson", "Radiant Gold", "Midnight Cyberpunk"], variable=self.theme_var, width=165)
+        self.theme_dropdown.pack(side="left", fill="x", expand=True)
+
+        # Quality & Audio File Row
         quality_frame = ctk.CTkFrame(self.controls_card, fg_color="transparent")
-        quality_frame.pack(fill="x", padx=15, pady=(5, 15))
-        ctk.CTkLabel(quality_frame, text="Render Quality:", font=("Helvetica", 13, "bold"), width=140, anchor="w").pack(side="left")
+        quality_frame.pack(fill="x", padx=15, pady=(4, 12))
+        ctk.CTkLabel(quality_frame, text="Quality & Music:", font=("Helvetica", 13, "bold"), width=140, anchor="w").pack(side="left")
         self.quality_var = ctk.StringVar(value="Normal")
-        self.quality_dropdown = ctk.CTkOptionMenu(quality_frame, values=list(self.quality_presets.keys()), variable=self.quality_var, width=340)
-        self.quality_dropdown.pack(side="left", fill="x", expand=True)
+        self.quality_dropdown = ctk.CTkOptionMenu(quality_frame, values=list(self.quality_presets.keys()), variable=self.quality_var, width=165)
+        self.quality_dropdown.pack(side="left", padx=(0, 10))
+
+        self.btn_audio = ctk.CTkButton(quality_frame, text="🎵 Select Custom Music", command=self.on_select_music, fg_color="#313244", hover_color="#45475a", height=28, width=165)
+        self.btn_audio.pack(side="left", fill="x", expand=True)
 
         # Generate Button
         self.btn_run = ctk.CTkButton(
@@ -157,7 +177,7 @@ class DotaRaceApp(ctk.CTk):
             hover_color="#74c7ec",
             text_color="#11111b"
         )
-        self.btn_run.pack(fill="x", padx=15, pady=(0, 15))
+        self.btn_run.pack(fill="x", padx=15, pady=(0, 12))
 
         # Media & File Action Card
         self.actions_card = ctk.CTkFrame(self, corner_radius=12, fg_color="#1e1e2e")
@@ -232,6 +252,18 @@ class DotaRaceApp(ctk.CTk):
     def enable_ui(self):
         self.btn_run.configure(state="normal")
         self.progress_label.configure(text="Generation Complete!", text_color="#a6e3a1")
+
+    def on_select_music(self):
+        from tkinter import filedialog
+        file_path = filedialog.askopenfilename(
+            title="Select Background Music Track",
+            filetypes=[("Audio Files", "*.mp3 *.wav *.aac *.m4a")]
+        )
+        if file_path:
+            self.custom_audio_path = file_path
+            filename = os.path.basename(file_path)
+            self.btn_audio.configure(text=f"🎵 {filename[:15]}...", fg_color="#a6e3a1", text_color="#11111b")
+            self.log(f"Selected audio track: {filename}")
 
     def on_open_folder(self):
         os.makedirs("output", exist_ok=True)
@@ -321,12 +353,15 @@ class DotaRaceApp(ctk.CTk):
             if not safe_name: safe_name = f"Player{player_id}"
             
             short_strat = self.filename_map.get(strat_name, "Video")
-            base_filename = f"{safe_name}_{short_strat}"
+            aspect_ratio = "9:16" if "Vertical" in self.aspect_var.get() else "16:9"
+            theme_name = self.theme_var.get()
+
+            base_filename = f"{safe_name}_{short_strat}_{aspect_ratio.replace(':', 'x')}"
             temp_path = f"output/temp_{base_filename}.mp4"
             final_path = f"output/{base_filename}.mp4"
             
             self.log(f"Target video: {base_filename}.mp4")
-            self.log(f"Rendering ({self.quality_var.get()})...")
+            self.log(f"Rendering ({self.quality_var.get()} | {aspect_ratio} | {theme_name})...")
             video_title = f"{player_name}\n{strategy.name} ({start_year}-Present)"
             
             VideoEngine.render_race(
@@ -336,11 +371,14 @@ class DotaRaceApp(ctk.CTk):
                 progress_callback=self.update_progress_ui,
                 steps_per_period=settings['steps'],
                 period_length=settings['period'],
-                dpi=settings['dpi']
+                dpi=settings['dpi'],
+                aspect_ratio=aspect_ratio,
+                theme_name=theme_name,
+                patch_overlay=True
             )
             
             self.log("Adding Music & Result Buffer...")
-            VideoEngine.add_audio(temp_path, final_path)
+            VideoEngine.add_audio(temp_path, final_path, music_file=self.custom_audio_path)
             if os.path.exists(temp_path): os.remove(temp_path)
 
             self.latest_generated_video = final_path
