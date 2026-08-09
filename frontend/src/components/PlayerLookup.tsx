@@ -114,7 +114,7 @@ export default function PlayerLookup({ onPlayerSelected, selectedPlayerId, onOpe
           className="px-5 py-3 rounded-xl gradient-bg-btn text-white text-sm font-semibold shadow-lg shadow-red-950/40 flex items-center justify-center gap-2 disabled:opacity-50"
         >
           <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-          <span>{syncing ? "Syncing..." : "Sync OpenDota"}</span>
+          <span>{syncing ? "Syncing..." : "Sync Data"}</span>
         </button>
 
         {onOpenRecentVideos && (

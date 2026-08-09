@@ -19,7 +19,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: dota_backend_gateway
     ports:
-      - "8050:8000"
+      - "8050:8050"
     environment:
       - REDIS_URL=redis://redis:6379/0
       - DATABASE_URL=sqlite:////app/data/dota.db
@@ -57,7 +57,7 @@ services:
       dockerfile: Dockerfile
     container_name: dota_web_frontend
     ports:
-      - "3050:3000"
+      - "3050:3050"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8050/api/v1
     depends_on:

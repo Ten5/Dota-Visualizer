@@ -61,25 +61,25 @@ from src.data.strategies import get_dota_patch_name
 
 COLOR_THEMES = {
     "Dire Crimson": {
-        "bg": (18, 18, 20, 255),
+        "bg": (15, 23, 42, 255),
         "text_header": (255, 255, 255, 255),
-        "text_sub": (180, 195, 220, 255),
-        "date_color": (240, 245, 255, 240),
-        "patch_color": (231, 76, 60, 255)
+        "text_sub": (148, 163, 184, 255),
+        "date_color": (248, 250, 252, 255),
+        "patch_color": (239, 68, 68, 255)
     },
     "Radiant Gold": {
         "bg": (15, 23, 42, 255),
         "text_header": (255, 255, 255, 255),
-        "text_sub": (203, 213, 225, 255),
-        "date_color": (254, 243, 199, 240),
-        "patch_color": (16, 185, 129, 255)
+        "text_sub": (148, 163, 184, 255),
+        "date_color": (248, 250, 252, 255),
+        "patch_color": (245, 158, 11, 255)
     },
     "Midnight Cyberpunk": {
-        "bg": (9, 9, 11, 255),
-        "text_header": (250, 250, 250, 255),
-        "text_sub": (161, 161, 170, 255),
-        "date_color": (6, 182, 212, 240),
-        "patch_color": (236, 72, 153, 255)
+        "bg": (11, 14, 20, 255),
+        "text_header": (255, 255, 255, 255),
+        "text_sub": (148, 163, 184, 255),
+        "date_color": (248, 250, 252, 255),
+        "patch_color": (244, 63, 94, 255)
     }
 }
 

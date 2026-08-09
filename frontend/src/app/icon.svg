@@ -1,0 +1,35 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ef4444" />
+      <stop offset="50%" stop-color="#dc2626" />
+      <stop offset="100%" stop-color="#991b1b" />
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#ef4444" />
+    </linearGradient>
+  </defs>
+
+  {/* Outer Shield Path */}
+  <path
+    d="M32 4L56 12V32C56 46.5 45.5 56 32 60C18.5 56 8 46.5 8 32V12L32 4Z"
+    fill="#0f172a"
+    stroke="url(#shieldGrad)"
+    stroke-width="3.5"
+  />
+
+  {/* Dota 2 Diagonal Blade Bar */}
+  <path
+    d="M18 44L46 20"
+    stroke="url(#glowGrad)"
+    stroke-width="5"
+    stroke-linecap="round"
+  />
+
+  {/* Stat Bar Graph Pillars */}
+  <rect x="18" y="32" width="4" height="10" rx="2" fill="#fbbf24" />
+  <rect x="25" y="26" width="4" height="16" rx="2" fill="#ef4444" />
+  <rect x="32" y="21" width="4" height="21" rx="2" fill="#38bdf8" />
+  <rect x="39" y="15" width="4" height="27" rx="2" fill="#10b981" />
+</svg>

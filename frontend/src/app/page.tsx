@@ -23,23 +23,14 @@ export default function HomePage() {
         {/* Hero Section Banner */}
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-red-950/40 to-slate-900 border border-slate-800 p-8 sm:p-10 shadow-2xl">
           <div className="relative z-10 max-w-2xl space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                🎮 Dota Stats Visualizer
-              </span>
-              <button
-                onClick={() => setShowRecentModal(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-all shadow-md"
-              >
-                <Film className="h-4 w-4" />
-                <span>View Recent Videos</span>
-              </button>
-            </div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+              🎮 Dota Stats Visualizer
+            </span>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
               Transform Dota 2 Match History into <span className="gradient-text-dota">High-FPS Video Animations</span>
             </h1>
             <p className="text-sm text-slate-300">
-              Fetch player stats from OpenDota, calculate time-series metric races, and render native OpenCV/FFmpeg videos directly in your browser.
+              Fetch player stats from OpenDota, calculate time-series metric races, and render videos directly in your browser.
             </p>
           </div>
 
