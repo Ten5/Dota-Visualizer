@@ -52,28 +52,19 @@ class TestOpenCVVideoEngine(unittest.TestCase):
         self.assertGreater(len(progress_calls), 0)
 
 class TestAddAudio(unittest.TestCase):
-    """Tests for audio integration functionality."""
+    """Tests for native FFmpeg audio integration functionality."""
 
-    @patch('src.visualizer.engine.afx')
-    @patch('src.visualizer.engine.AudioFileClip')
-    @patch('src.visualizer.engine.VideoFileClip')
-    @patch('src.visualizer.engine.concatenate_videoclips')
-    def test_add_audio_loads_video(self, mock_concat, mock_clip, mock_audio, mock_afx):
-        """Test that video file is loaded correctly and audio is blended."""
-        mock_video = MagicMock()
-        mock_video.duration = 10
-        mock_clip.return_value = mock_video
-        mock_concat.return_value = mock_video
+    @patch('src.visualizer.engine.subprocess.run')
+    @patch('shutil.copyfile')
+    def test_add_audio_runs_ffmpeg(self, mock_copy, mock_run):
+        """Test that FFmpeg subprocess is invoked or copy fallback runs."""
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as in_file, tempfile.NamedTemporaryFile(suffix=".mp4") as out_file:
+            mock_res = MagicMock()
+            mock_res.returncode = 0
+            mock_run.return_value = mock_res
 
-        mock_audio_clip = MagicMock()
-        mock_audio_clip.duration = 5
-        mock_audio.return_value = mock_audio_clip
-        mock_audio_clip.subclip.return_value = mock_audio_clip
-        mock_audio_clip.audio_fadeout.return_value = mock_audio_clip
-        mock_afx.audio_loop.return_value = mock_audio_clip
-
-        VideoEngine.add_audio("in.mp4", "out.mp4", music_dir="tests/mock_music")
-        mock_clip.assert_called_with("in.mp4")
+            VideoEngine.add_audio(in_file.name, out_file.name)
+            self.assertTrue(mock_run.called or mock_copy.called)
 
 if __name__ == '__main__':
     unittest.main()

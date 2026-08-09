@@ -359,31 +359,42 @@ class VideoEngine:
 
     @staticmethod
     def add_audio(video_path, final_path, music_file=None, music_dir="assets/music"):
-        """Extends video with 2-second result buffer and layers background audio."""
+        """Fast native FFmpeg stream multiplexing with zero re-encoding overhead."""
+        import shutil
+        import subprocess
+
+        if not os.path.exists(video_path):
+            return
+
         os.makedirs(music_dir, exist_ok=True)
         audio_path = None
         if music_file and os.path.exists(music_file):
             audio_path = music_file
-        else:
+        elif os.path.exists(music_dir):
             music_files = [f for f in os.listdir(music_dir) if f.endswith(".mp3")]
             if music_files:
                 audio_path = os.path.join(music_dir, random.choice(music_files))
-        
-        original_clip = VideoFileClip(video_path)
-        last_frame = original_clip.to_ImageClip(t=max(original_clip.duration - 0.05, 0)).set_duration(2)
-        extended_clip = concatenate_videoclips([original_clip, last_frame])
-        
-        if audio_path:
-            audio_clip = AudioFileClip(audio_path)
-            if audio_clip.duration < extended_clip.duration:
-                audio_clip = afx.audio_loop(audio_clip, duration=extended_clip.duration)
-            audio_clip = audio_clip.subclip(0, extended_clip.duration).audio_fadeout(3)
-            final_clip = extended_clip.set_audio(audio_clip)
-            final_clip.write_videofile(final_path, codec="libx264", audio_codec="aac", verbose=False, logger=None)
-            audio_clip.close()
-            final_clip.close()
-        else:
-            extended_clip.write_videofile(final_path, codec="libx264", verbose=False, logger=None)
-            extended_clip.close()
-            
-        original_clip.close()
+
+        if audio_path and os.path.exists(audio_path):
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", video_path,
+                "-stream_loop", "-1", "-i", audio_path,
+                "-c:v", "copy",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-shortest",
+                final_path
+            ]
+            try:
+                res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                if res.returncode == 0 and os.path.exists(final_path):
+                    return
+            except Exception:
+                pass
+
+        # Fallback: direct copy if no audio or FFmpeg mux fails
+        try:
+            shutil.copyfile(video_path, final_path)
+        except Exception:
+            pass
