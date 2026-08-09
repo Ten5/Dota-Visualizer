@@ -33,3 +33,22 @@ The application follows a modular **Model-View-Controller (MVC)** architecture w
 
 ### PyInstaller Build (`build.py`)
 Compiles `main.py` into a self-contained executable bundle with embedded `assets/` and `cache/` dependencies.
+
+---
+
+## 4. Phase 4 Web & Backend Architecture ([`src/backend`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/backend))
+
+### A. FastAPI Backend Gateway ([`src/backend/main.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/backend/main.py))
+- **Asynchronous Web Gateway:** Built on FastAPI with OpenAPI/Swagger interactive documentation (`/docs`).
+- **Middleware Pipeline:** CORS policy enforcement, request correlation ID tracing (`X-Request-ID`), execution time header injection (`X-Process-Time-Ms`), and structured exception handling.
+
+### B. Core Core Infrastructure ([`src/backend/core`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/backend/core))
+- **Configuration Management ([`config.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/backend/core/config.py)):** Environment variable overrides via `pydantic-settings`.
+- **Structured Logging ([`logging.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/backend/core/logging.py)):** Configurable standard and production JSON log formatters with request correlation support.
+- **SQLAlchemy Database Layer ([`database.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/backend/core/database.py)):** Connection-pooled SQLAlchemy engine supporting SQLite and PostgreSQL, with `get_db()` session dependency.
+
+### C. Domain Models & Schemas ([`src/backend/models`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/backend/models), [`src/backend/schemas`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/backend/schemas))
+- **`MatchModel`:** Stores match details, raw OpenDota JSON payloads, and `last_accessed_at` timestamps for 90-day LRU cache pruning.
+- **`PlayerProfileModel`:** Stores profile metadata, avatar blobs, and privacy flags.
+- **`SteamUserModel` & `ApiKeyModel`:** Manages Steam OpenID authentication profiles and API key access.
+- **`RenderJobModel`:** Tracks background video render job statuses, rendering progress (0-100%), video output URLs, and 1-hour TTL expiration.

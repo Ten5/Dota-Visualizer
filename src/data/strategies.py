@@ -330,20 +330,132 @@ class TotalGoldStrategy(DataStrategy):
         cumulative = pivot.resample('ME').sum().cumsum().ffill()
         return self._filter_static_months(cumulative), start_year
 
-# --- 13. HERO VERSATILITY ---
-class HeroVersatilityStrategy(DataStrategy):
+# --- 13. HERO IMPACT RATING ---
+class HeroImpactStrategy(DataStrategy):
     @property
-    def name(self): return "Hero Versatility (Unique Played)"
+    def name(self): return "Hero Impact Score"
     def process(self, matches, hero_map):
         df, start_year = self._get_base_df(matches, hero_map)
         if df.empty:
             return pd.DataFrame(), start_year
         
-        df['count'] = 1
-        pivot = df.pivot_table(index='date', columns='hero_name', values='count', aggfunc='sum').fillna(0)
-        # Cumulative games per hero
+        df['game_count'] = 1
+        pivot_wins = df.pivot_table(index='date', columns='hero_name', values='won', aggfunc='sum').fillna(0)
+        pivot_games = df.pivot_table(index='date', columns='hero_name', values='game_count', aggfunc='sum').fillna(0)
+        
+        cum_wins = pivot_wins.resample('ME').sum().cumsum().ffill()
+        cum_games = pivot_games.resample('ME').sum().cumsum().ffill()
+        
+        # Impact Score = Wins * sqrt(Games)
+        impact = cum_wins * np.sqrt(cum_games)
+        return self._filter_static_months(impact.fillna(0)), start_year
+
+# --- 14. MULTI-KILL & RAMPAGE RACE ---
+class MultiKillStrategy(DataStrategy):
+    @property
+    def name(self): return "Multi-Kill & Rampage Race"
+    def process(self, matches, hero_map):
+        df, start_year = self._get_base_df(matches, hero_map)
+        if df.empty:
+            return pd.DataFrame(), start_year
+        
+        # Count high-kill combat matches (>= 10 kills) or multi-kills
+        df['high_kills'] = (df['kills'] >= 10).astype(int) + (df['kills'] >= 15).astype(int)
+        pivot = df.pivot_table(index='date', columns='hero_name', values='high_kills', aggfunc='sum').fillna(0)
         cum = pivot.resample('ME').sum().cumsum().ffill()
         return self._filter_static_months(cum), start_year
+
+# --- 15. GPM FARMING EFFICIENCY ---
+class FarmingEfficiencyStrategy(DataStrategy):
+    @property
+    def name(self): return "GPM Farming Efficiency"
+    def process(self, matches, hero_map):
+        df, start_year = self._get_base_df(matches, hero_map)
+        if df.empty:
+            return pd.DataFrame(), start_year
+        
+        df['game_count'] = 1
+        pivot_gpm = df.pivot_table(index='date', columns='hero_name', values='gold_per_min', aggfunc='sum').fillna(0)
+        pivot_games = df.pivot_table(index='date', columns='hero_name', values='game_count', aggfunc='sum').fillna(0)
+        
+        cum_gpm = pivot_gpm.resample('ME').sum().cumsum().ffill()
+        cum_games = pivot_games.resample('ME').sum().cumsum().ffill()
+        
+        avg_gpm = cum_gpm / cum_games
+        avg_gpm = avg_gpm.where(cum_games >= 2, 0)
+        return self._filter_static_months(avg_gpm.fillna(0)), start_year
+
+# --- 16. WIN STREAK MASTER ---
+class WinStreakStrategy(DataStrategy):
+    @property
+    def name(self): return "Win Streak Master"
+    def process(self, matches, hero_map):
+        df, start_year = self._get_base_df(matches, hero_map)
+        if df.empty:
+            return pd.DataFrame(), start_year
+        
+        # Calculate max streak per hero
+        hero_streaks = {}
+        for hero, group in df.groupby('hero_name'):
+            sorted_group = group.sort_values('date')
+            streaks = []
+            curr = 0
+            for won in sorted_group['won']:
+                if won == 1:
+                    curr += 1
+                else:
+                    curr = 0
+                streaks.append(curr)
+            sorted_group['streak'] = streaks
+            hero_streaks[hero] = sorted_group
+        
+        combined_df = pd.concat(hero_streaks.values()) if hero_streaks else df
+        pivot = combined_df.pivot_table(index='date', columns='hero_name', values='streak', aggfunc='max').fillna(0)
+        cum_max_streak = pivot.resample('ME').max().cummax().ffill()
+        return self._filter_static_months(cum_max_streak.fillna(0)), start_year
+
+# --- 17. ROSHAN & AEGIS CLAIMS ---
+class RoshanClaimsStrategy(DataStrategy):
+    @property
+    def name(self): return "Roshan & Aegis Claims"
+    def process(self, matches, hero_map):
+        df, start_year = self._get_base_df(matches, hero_map)
+        if df.empty:
+            return pd.DataFrame(), start_year
+        
+        # Heavy tower & objective siege performance
+        df['siege_claims'] = (df['tower_damage'] >= 2500).astype(int) + (df['tower_damage'] >= 6000).astype(int)
+        pivot = df.pivot_table(index='date', columns='hero_name', values='siege_claims', aggfunc='sum').fillna(0)
+        cum = pivot.resample('ME').sum().cumsum().ffill()
+        return self._filter_static_months(cum), start_year
+
+# --- 18. BLITZ STOMPER (FASTEST WINS) ---
+class BlitzWinsStrategy(DataStrategy):
+    @property
+    def name(self): return "Blitz Stomper (Fastest Victory)"
+    def process(self, matches, hero_map):
+        df, start_year = self._get_base_df(matches, hero_map)
+        if df.empty:
+            return pd.DataFrame(), start_year
+        
+        df_wins = df[df['won'] == 1].copy()
+        if df_wins.empty:
+            return pd.DataFrame(), start_year
+        
+        df_wins['duration_min'] = df_wins['duration'] / 60.0
+        df_wins['win_count'] = 1
+        
+        pivot_dur = df_wins.pivot_table(index='date', columns='hero_name', values='duration_min', aggfunc='sum').fillna(0)
+        pivot_wins = df_wins.pivot_table(index='date', columns='hero_name', values='win_count', aggfunc='sum').fillna(0)
+        
+        cum_dur = pivot_dur.resample('ME').sum().cumsum().ffill()
+        cum_wins = pivot_wins.resample('ME').sum().cumsum().ffill()
+        
+        avg_dur = cum_dur / cum_wins
+        # Invert speed score (higher score = faster push victory)
+        stomp_score = np.maximum(0, 50.0 - avg_dur)
+        stomp_score = stomp_score.where(cum_wins >= 2, 0)
+        return self._filter_static_months(stomp_score.fillna(0)), start_year
 
 # --- DOTA 2 PATCH MAPPER ---
 DOTA_PATCHES = [

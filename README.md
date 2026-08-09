@@ -35,6 +35,17 @@ A Python desktop application that transforms your Dota 2 match history into slee
 pip install -r requirements.txt
 ```
 
+## 🐋 Docker Single-Command Launch
+
+Run the entire platform (Redis, Celery render worker, FastAPI backend, Next.js web application) using Docker Compose:
+
+```bash
+docker-compose up -d --build
+```
+- **Next.js Web Application:** [http://localhost:3050](http://localhost:3050)
+- **FastAPI Backend Gateway:** [http://localhost:8050](http://localhost:8050)
+- **Interactive Swagger Docs:** [http://localhost:8050/docs](http://localhost:8050/docs)
+
 ---
 
 ## ▶️ Execution Modes
@@ -70,6 +81,22 @@ Package the application into a standalone desktop application bundle:
 ```bash
 python build.py
 ```
+
+---
+
+### Mode 4: Phase 4 Decoupled FastAPI Web Gateway
+Launch the REST/SSE backend gateway:
+```bash
+# Option A: Run via uvicorn with PYTHONPATH
+PYTHONPATH=. uvicorn src.backend.main:app --reload
+
+# Option B: Run via Python module
+python -m src.backend.main
+```
+- Interactive Swagger UI: `http://localhost:8000/docs`
+- Health check: `http://localhost:8000/api/v1/health`
+
+For complete testing & launch instructions across all phases, see [`docs/Local_Launch_and_Testing_Guide.md`](file:///Users/ten5/Documents/GitHub/dota_visualizer/docs/Local_Launch_and_Testing_Guide.md).
 
 ---
 

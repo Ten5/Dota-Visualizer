@@ -1,0 +1,69 @@
+services:
+  # 1. Redis Message Broker & Cache
+  redis:
+    image: redis:7-alpine
+    container_name: dota_redis
+    ports:
+      - "6379:6379"
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. FastAPI Backend Gateway
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: dota_backend_gateway
+    ports:
+      - "8050:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite:////app/data/dota.db
+      - ENVIRONMENT=production
+    volumes:
+      - dota_data:/app/data
+      - dota_media:/app/output/ephemeral
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+  # 3. Celery Async Video Rendering Worker
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: dota_celery_worker
+    command: celery -A src.backend.worker.celery_app worker --loglevel=info -c 2
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite:////app/data/dota.db
+    volumes:
+      - dota_data:/app/data
+      - dota_media:/app/output/ephemeral
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+  # 4. Next.js 15 Web Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dota_web_frontend
+    ports:
+      - "3050:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8050/api/v1
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  dota_data:
+  dota_media:
