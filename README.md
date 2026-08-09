@@ -1,108 +1,81 @@
-# Dota 2 History Visualizer ⚔️📊
+# Dota Stats Visualizer ⚔️📊
 
-A Python desktop application that transforms your Dota 2 match history into sleek, animated **"Bar Chart Race"** videos. Watch your most played heroes, win rates, KDA ratios, damage output, hero pool versatility, and role evolutions unfold from your earliest matches to the present day.
-
-![App Icon](assets/icon.png)
+A high-performance cloud visualizer and video rendering platform that transforms Dota 2 match history into sleek, animated **"Bar Chart Race"** videos. Watch your most played heroes, win rates, KDA ratios, damage output, farming efficiency, and multi-kill sprees unfold from your earliest matches to the present day.
 
 ---
 
-## 🚀 Key Features
+## 🚀 Key Features & Capabilities
+
+- **🌐 Decoupled Full-Stack Architecture (Phase 4 SDD):**
+  - **Frontend:** Next.js 15 App Router, React 19, Tailwind CSS, Lucide icons, glassmorphism UI.
+  - **Backend Gateway:** FastAPI (Python 3.11), SQLAlchemy, SlowAPI rate-limiting, OpenID 2.0 Steam Auth, JWT Sessions.
+  - **Async Worker Queue:** Celery & Redis task queue for rendering high-FPS MP4 videos in background workers.
+  - **Security Engine:** Dynamic Content Security Policy (CSP), CORS protection, API key authentication.
 
 - **📱 9:16 Vertical Shorts & 16:9 Landscape:** Export videos in standard `16:9` landscape or `9:16` vertical video formatted for **TikTok, YouTube Shorts, and Instagram Reels**.
-- **🎨 UI Theme Engine:** Switch between curated color themes (*Dire Crimson*, *Radiant Gold*, *Midnight Cyberpunk*).
+- **🎨 UI Theme Engine:** Switch between curated color themes (*Dire Crimson*, *Radiant Gold*, *Midnight Cyberpunk*) with harmonized typography and clean overlay spacing.
+- **🎬 In-Browser MP4 Video Preview & Recent Renders:** View, preview, and download active generated video animations directly inside an interactive HTML5 modal.
 - **⚔️ Dota 2 Patch Timeline Overlay:** Displays historical patch release labels (e.g. *PATCH 7.33 - NEW FRONTIERS*, *PATCH 7.36*) alongside monthly date stamps.
 - **⚡ Dynamic Period Pacing:** Automatically speeds up during quiet/inactive months (fast-forwarding in ~0.16s) and slows down during intense gaming sprees & rank swaps for cinematic focus.
-- **🎵 Custom Background Music Selector:** Select custom `.mp3` or `.wav` audio files directly from the GUI.
-- **📊 12 Unique Statistical Metrics:**
-  - *Matches Played*, *Total Wins*, *Win Rate %*, *KDA Ratio (Efficiency)*, *Role Evolution (Core vs Support)*, *Laning Preference*, *Tower Damage (Thousands)*, *Total Damage (Millions)*, *Total Gold Farmed (Millions)*, *Total Deaths*, *Most Purchased Items*, and *Hero Versatility (Unique Played)*.
-- **⚡ Blazing-Fast OpenCV Rendering Engine:** Custom native 2D canvas drawer rendering videos in seconds (**250+ FPS**) with FFmpeg hardware acceleration (`h264_videotoolbox` / `h264_nvenc`).
-- **💾 SQLite Persistent Disk Caching:** Stores full match histories locally (`cache/dota_visualizer.db`) with instant (<0.05s) startup loading.
-- **🎬 Direct Media Controls:** Built-in GUI buttons to **Open Output Folder**, **Play Latest Video**, and **Clear Output Videos**.
+- **🎵 Custom Background Music Selector:** Select custom `.mp3` or `.wav` audio files directly from the web app or API.
 
 ---
 
-## 🛠️ Requirements & Installation
+## 📊 17 Statistical Visualization Metrics
 
-### 1. Prerequisites
-- **Python 3.10+**
-- **FFmpeg** (Required for MP4 video encoding)
-  - **macOS:** `brew install ffmpeg`
-  - **Linux:** `sudo apt install ffmpeg`
-  - **Windows:** Download from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) and add `ffmpeg/bin` to system PATH.
-
-### 2. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-## 🐋 Docker Single-Command Launch
-
-Run the entire platform (Redis, Celery render worker, FastAPI backend, Next.js web application) using Docker Compose:
-
-```bash
-docker-compose up -d --build
-```
-- **Next.js Web Application:** [http://localhost:3050](http://localhost:3050)
-- **FastAPI Backend Gateway:** [http://localhost:8050](http://localhost:8050)
-- **Interactive Swagger Docs:** [http://localhost:8050/docs](http://localhost:8050/docs)
+1. ⚡ **Hero Impact Rating** (`Wins × √(Games)` signature mains score)
+2. 🔥 **Multi-Kill & Rampage Race** (High-kill & teamfight slaughter race)
+3. 🌾 **GPM Farming Efficiency** (Average Gold Per Min timeline)
+4. 🏆 **Win Streak Master** (Longest winning sprees per hero)
+5. 🛡️ **Roshan & Aegis Claims** (Objective siege & boss kills)
+6. 🚀 **Blitz Stomper** (Fastest push victory duration)
+7. 👑 **Hero Masteries** (Most played main heroes race)
+8. 🥇 **Total Wins** (Victory milestones per hero)
+9. 📈 **Win Rate %** (Win rate percentage for top mains)
+10. ⚔️ **Most Purchased Items** (Item purchase race history)
+11. 🎭 **Role Evolution** (Core vs Support role balance)
+12. 🎯 **KDA Efficiency** (Kill/Death/Assist ratio timeline)
+13. 🏰 **Tower Damage** (Objective siege damage)
+14. 🗺️ **Laning Preference** (Safe/Mid/Offlane distribution)
+15. 💥 **Total Hero Damage** (Combat damage dealt)
+16. 💀 **Total Deaths** (Casualty count timeline)
+17. 💰 **Total Net Gold** (Farming efficiency race)
 
 ---
 
-## ▶️ Execution Modes
+## 🐋 Production Deployment & Local Launch
 
-### Mode 1: Desktop GUI Application (Local UI)
+### Option A: Local Docker Compose (Single Command)
+Run the entire production stack locally on dedicated ports **`3050`** and **`8050`**:
+
 ```bash
-python main.py
+docker compose up -d --build
 ```
-1. Enter your 32-bit Steam ID (e.g. `70388657` for Dendi).
-2. Select Metric, Aspect Ratio (`16:9 Landscape` or `9:16 Vertical Shorts`), Theme, and Render Quality.
-3. (Optional) Select a custom background `.mp3` music file.
-4. Click **▶️ Generate Video**.
+- 🌐 **Web Application:** [http://localhost:3050](http://localhost:3050)
+- ⚡ **FastAPI Backend Gateway:** [http://localhost:8050](http://localhost:8050)
+- 📖 **Interactive API Docs:** [http://localhost:8050/docs](http://localhost:8050/docs)
 
 ---
 
-### Mode 2: Headless Command Line Interface (CLI)
-Run video generation directly from the terminal with full customization:
-```bash
-python cli.py --player_id 70388657 --metric "Hero Versatility" --aspect_ratio "9:16" --theme "Midnight Cyberpunk" --quality "Normal"
-```
-*CLI Flags:*
-- `--player_id`: 32-bit Steam ID (required).
-- `--metric`: Visualization strategy name.
-- `--aspect_ratio`: `16:9` or `9:16`.
-- `--theme`: `Dire Crimson`, `Radiant Gold`, or `Midnight Cyberpunk`.
-- `--audio_file`: Path to custom `.mp3` audio track.
-- `--quality`: `Draft`, `Normal`, `High`, `Ultra`.
+### Option B: Free Cloud Hosting Stack (Vercel + Render + Upstash)
+
+1. **Frontend (Vercel):** Deploy `frontend/` directory to Vercel with Environment Variable:
+   ```env
+   NEXT_PUBLIC_API_URL=https://your-backend.onrender.com/api/v1
+   ```
+2. **Backend Gateway & Celery Worker (Render.com):** Deploy `Dockerfile.backend` to Render Web Service and Background Worker with Environment Variables:
+   ```env
+   ENVIRONMENT=production
+   REDIS_URL=rediss://default:PASSWORD@endpoint.upstash.io:6379
+   JWT_SECRET_KEY=your_secret_key
+   ```
+3. **Redis Broker (Upstash):** Create free serverless TLS Redis instance on Upstash.com.
 
 ---
 
-### Mode 3: Standalone Executable Build (PyInstaller)
-Package the application into a standalone desktop application bundle:
+## 🧪 Running Automated Test Suite
+
+Run the full automated unit test suite:
 ```bash
-python build.py
-```
-
----
-
-### Mode 4: Phase 4 Decoupled FastAPI Web Gateway
-Launch the REST/SSE backend gateway:
-```bash
-# Option A: Run via uvicorn with PYTHONPATH
-PYTHONPATH=. uvicorn src.backend.main:app --reload
-
-# Option B: Run via Python module
-python -m src.backend.main
-```
-- Interactive Swagger UI: `http://localhost:8000/docs`
-- Health check: `http://localhost:8000/api/v1/health`
-
-For complete testing & launch instructions across all phases, see [`docs/Local_Launch_and_Testing_Guide.md`](file:///Users/ten5/Documents/GitHub/dota_visualizer/docs/Local_Launch_and_Testing_Guide.md).
-
----
-
-## 🧪 Running Unit Tests
-
-Run the complete automated unit test suite:
-```bash
-python -m unittest discover tests
+./dota-env/bin/python -m unittest discover -s tests
 ```
