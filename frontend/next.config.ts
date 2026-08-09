@@ -11,7 +11,7 @@ const cspHeader = `
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
-    connect-src 'self' http://localhost:8050 http://127.0.0.1:8050 http://localhost:8000 http://127.0.0.1:8000 https://api.opendota.com;
+    connect-src 'self' http://localhost:8050 http://127.0.0.1:8050 http://localhost:8000 http://127.0.0.1:8000 https://dota-backend-gateway.onrender.com https://*.onrender.com https://api.opendota.com https:;
 `;
 
 const nextConfig: NextConfig = {
