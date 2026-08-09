@@ -1,7 +1,7 @@
 # 📌 Project Current State & Architecture Reference
 
 > **Last Updated:** August 9, 2026  
-> **Status:** Phase 4 SDD Completed & Production Ready  
+> **Status:** Phase 4 SDD Completed & Production Ready (100% Free Single-Container Web Service)  
 > **Repository:** `Dota-Visualizer` / `Dota Stats Visualizer`
 
 This document serves as the authoritative quick-reference guide for any AI assistant or developer working on the codebase to understand the exact current architecture, components, ports, metrics, security configuration, and deployment setup.
@@ -10,7 +10,7 @@ This document serves as the authoritative quick-reference guide for any AI assis
 
 ## 🏗️ 1. Full-Stack System Architecture
 
-The application is structured into four decoupled production services:
+The application is structured into a production full-stack system:
 
 ```
                   ┌────────────────────────────────────────┐
@@ -19,19 +19,17 @@ The application is structured into four decoupled production services:
                                       │ REST API / Media Stream
                                       ▼
              ┌──────────────────────────────────────────────────┐
-             │  FastAPI Backend Gateway (Port 8050 / Render.com)  │
-             └────────┬─────────────────────────────────┬───────┘
-                      │ SQLAlchemy DB                   │ Celery Task Queue
-                      ▼                                 ▼
-             ┌──────────────────┐            ┌────────────────────────────┐
-             │ SQLite / Postgres│            │ Redis 7 (Broker / Upstash) │
-             │ Match History DB │            └──────────────┬─────────────┘
-             └──────────────────┘                           │
-                                                            ▼
-                                             ┌────────────────────────────┐
-                                             │ Celery Render Worker       │
-                                             │ (OpenCV / FFmpeg Engine)   │
-                                             └────────────────────────────┘
+             │ Render.com Single Web Service Container ($0/mo)  │
+             │ Executed via /app/start.sh                       │
+             ├────────────────────────┬─────────────────────────┤
+             │ FastAPI Gateway (8050) │ Celery Worker (Bg Process)│
+             └────────┬───────────────┴─────────┬───────────────┘
+                      │ SQLAlchemy DB           │ Celery Task Queue
+                      ▼                         ▼
+             ┌──────────────────┐    ┌────────────────────────────┐
+             │ SQLite / Postgres│    │ Redis 7 (Broker / Upstash) │
+             │ Match History DB │    └────────────────────────────┘
+             └──────────────────┘
 ```
 
 ---
@@ -40,16 +38,33 @@ The application is structured into four decoupled production services:
 
 To prevent conflicts with common development ports (3000/8000), internal container ports and host exposed ports are synchronized:
 
-| Service Component | Internal Container Port | Host Port | Production Cloud Provider | Entry File / Path |
+| Service Component | Internal Container Port | Host Port | Production Cloud Provider | Entry File / Launch Script |
 |---|---|---|---|---|
 | **Next.js Web App** | `3050` | `3050` | **Vercel** (`https://*.vercel.app`) | [`frontend/`](file:///Users/ten5/Documents/GitHub/dota_visualizer/frontend) |
-| **FastAPI Gateway** | `8050` | `8050` | **Render.com** (`https://*.onrender.com`) | [`src/backend/main.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/backend/main.py) |
-| **Celery Render Worker** | N/A | N/A | **Render.com** (Background Worker) | [`src/backend/worker.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/backend/worker.py) |
+| **FastAPI Gateway + Celery Worker** | `8050` | `8050` | **Render.com Free Web Service** | [`start.sh`](file:///Users/ten5/Documents/GitHub/dota_visualizer/start.sh) / [`Dockerfile.backend`](file:///Users/ten5/Documents/GitHub/dota_visualizer/Dockerfile.backend) |
 | **Redis Broker** | `6379` | `6379` | **Upstash Redis** (`rediss://...`) | [`docker-compose.yml`](file:///Users/ten5/Documents/GitHub/dota_visualizer/docker-compose.yml) |
 
 ---
 
-## 📊 3. All 17 Visualization Metrics
+## 🛠️ 3. URL Normalization & API Base Helper
+
+To ensure 100% resilience across all deployment environments (whether `NEXT_PUBLIC_API_URL` is configured with or without `/api/v1` or trailing slashes), [`frontend/src/lib/api.ts`](file:///Users/ten5/Documents/GitHub/dota_visualizer/frontend/src/lib/api.ts) includes a dynamic URL normalizer:
+
+```typescript
+function getApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!envUrl) return "http://localhost:8050/api/v1";
+  const trimmed = envUrl.trim().replace(/\/+$/, "");
+  if (trimmed.endsWith("/api/v1")) {
+    return trimmed;
+  }
+  return `${trimmed}/api/v1`;
+}
+```
+
+---
+
+## 📊 4. All 17 Visualization Metrics
 
 All metrics are defined in [`src/data/strategies.py`](file:///Users/ten5/Documents/GitHub/dota_visualizer/src/data/strategies.py) and registered in [`RenderStudio.tsx`](file:///Users/ten5/Documents/GitHub/dota_visualizer/frontend/src/components/RenderStudio.tsx):
 
@@ -73,7 +88,7 @@ All metrics are defined in [`src/data/strategies.py`](file:///Users/ten5/Documen
 
 ---
 
-## 🔒 4. Security & Content Security Policy (CSP)
+## 🔒 5. Security & Content Security Policy (CSP)
 
 - **Dynamic CSP Header:** Defined in [`frontend/next.config.ts`](file:///Users/ten5/Documents/GitHub/dota_visualizer/frontend/next.config.ts).
   - Dynamically extracts origin from `process.env.NEXT_PUBLIC_API_URL`.
@@ -82,7 +97,7 @@ All metrics are defined in [`src/data/strategies.py`](file:///Users/ten5/Documen
 
 ---
 
-## 🏃 5. How to Run Locally & Execute Tests
+## 🏃 6. How to Run Locally & Execute Tests
 
 ### Local Docker Launch
 ```bash
@@ -100,8 +115,8 @@ docker compose up -d --build
 
 ---
 
-## 🚀 6. Cloud Production Deployment Stack
+## 🚀 7. 100% Free Cloud Production Deployment Stack
 
 1. **Frontend (Vercel):** Connect `frontend/` directory with environment variable `NEXT_PUBLIC_API_URL=https://dota-backend-gateway.onrender.com/api/v1`.
-2. **Backend (Render.com):** Connect `Dockerfile.backend` with environment variables (`REDIS_URL`, `ENVIRONMENT=production`, `JWT_SECRET_KEY`).
-3. **Redis (Upstash):** Create free serverless TLS Redis instance.
+2. **Backend (Render.com Single Free Web Service):** Deploy `Dockerfile.backend` to a **single Free Web Service**. `start.sh` will launch both Uvicorn and the Celery worker concurrently inside the single free container ($0/mo).
+3. **Redis (Upstash):** Create free serverless TLS Redis instance (`rediss://...`).
