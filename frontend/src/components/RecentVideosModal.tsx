@@ -22,7 +22,7 @@ export default function RecentVideosModal({
   const [activePreviewJobId, setActivePreviewJobId] = useState<string | null>(null);
 
   const backendBase = process.env.NEXT_PUBLIC_API_URL
-    ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/v1\/?$/, "")
+    ? process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/api\/v1\/?$/, "").replace(/\/+$/, "")
     : "http://localhost:8050";
 
   const fetchJobs = useCallback(async () => {

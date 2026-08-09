@@ -8,7 +8,17 @@ import {
   UserResponse,
 } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8050/api/v1";
+function getApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!envUrl) return "http://localhost:8050/api/v1";
+  const trimmed = envUrl.trim().replace(/\/+$/, "");
+  if (trimmed.endsWith("/api/v1")) {
+    return trimmed;
+  }
+  return `${trimmed}/api/v1`;
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 export async function syncPlayerMatches(playerId: number): Promise<PlayerSyncResponse> {
   const res = await fetch(`${API_BASE_URL}/players/${playerId}/sync`, {

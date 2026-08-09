@@ -38,7 +38,7 @@ export default function VideoPlayerModal({ job, onClose }: VideoPlayerModalProps
   }, [job.job_id, jobStatus.status]);
 
   const backendBase = process.env.NEXT_PUBLIC_API_URL
-    ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/v1\/?$/, "")
+    ? process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/api\/v1\/?$/, "").replace(/\/+$/, "")
     : "http://localhost:8050";
 
   const fullVideoUrl = jobStatus.video_url
