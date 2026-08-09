@@ -29,7 +29,7 @@ class Settings(BaseSettings):
         url = self.REDIS_URL.strip() if self.REDIS_URL else ""
         if url.startswith("rediss://") and "ssl_cert_reqs" not in url:
             sep = "&" if "?" in url else "?"
-            url = f"{url}{sep}ssl_cert_reqs=none"
+            url = f"{url}{sep}ssl_cert_reqs=required"
         return url
     
     # Auth & Security
