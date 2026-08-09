@@ -13,23 +13,34 @@ from src.backend.models.matches import MatchModel
 from src.backend.models.base import utc_now
 from src.backend.services.ingestion import MatchIngestionService
 
+import ssl
+
 logger = get_logger("dota.worker")
+
+redis_url = settings.normalized_redis_url
 
 # Initialize Celery app
 celery_app = Celery(
     "dota_worker",
-    broker=settings.REDIS_URL,
-    backend=settings.REDIS_URL
+    broker=redis_url,
+    backend=redis_url
 )
 
-celery_app.conf.update(
-    task_serializer="json",
-    accept_content=["json"],
-    result_serializer="json",
-    timezone="UTC",
-    enable_utc=True,
-    task_track_started=True,
-)
+celery_conf = {
+    "task_serializer": "json",
+    "accept_content": ["json"],
+    "result_serializer": "json",
+    "timezone": "UTC",
+    "enable_utc": True,
+    "task_track_started": True,
+}
+
+if redis_url.startswith("rediss://"):
+    ssl_opts = {"ssl_cert_reqs": ssl.CERT_NONE}
+    celery_conf["broker_use_ssl"] = ssl_opts
+    celery_conf["redis_backend_use_ssl"] = ssl_opts
+
+celery_app.conf.update(**celery_conf)
 
 def process_render_job(job_id: str, db: Session):
     """

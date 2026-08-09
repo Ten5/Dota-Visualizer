@@ -23,6 +23,14 @@ class Settings(BaseSettings):
         default="redis://localhost:6379/0",
         env="REDIS_URL"
     )
+
+    @property
+    def normalized_redis_url(self) -> str:
+        url = self.REDIS_URL.strip() if self.REDIS_URL else ""
+        if url.startswith("rediss://") and "ssl_cert_reqs" not in url:
+            sep = "&" if "?" in url else "?"
+            url = f"{url}{sep}ssl_cert_reqs=none"
+        return url
     
     # Auth & Security
     JWT_SECRET_KEY: str = Field(
