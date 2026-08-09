@@ -1,4 +1,5 @@
 import os
+import time
 import uuid
 import json
 from datetime import timedelta
@@ -142,6 +143,17 @@ def process_render_job(job_id: str, db: Session):
         profile_obj = db.query(PlayerProfileModel).filter_by(player_id=job.player_id).first()
         player_name = profile_obj.personaname if (profile_obj and profile_obj.personaname) else f"Player #{job.player_id}"
 
+        # Proactively purge stale temp files older than 10 minutes
+        try:
+            now_ts = time.time()
+            for f in os.listdir(output_dir):
+                if f.startswith("temp_") and f.endswith(".mp4"):
+                    f_path = os.path.join(output_dir, f)
+                    if os.path.exists(f_path) and (now_ts - os.path.getmtime(f_path) > 600):
+                        os.remove(f_path)
+        except Exception:
+            pass
+
         temp_path = os.path.abspath(os.path.join(output_dir, f"temp_{output_filename}"))
         video_title = f"{player_name}\n{strategy.name} ({start_year}-Present)"
 
@@ -158,23 +170,28 @@ def process_render_job(job_id: str, db: Session):
                 except Exception:
                     pass
 
-        VideoEngine.render_race(
-            df,
-            temp_path,
-            title=video_title,
-            progress_callback=worker_progress,
-            steps_per_period=quality_settings['steps'],
-            period_length=quality_settings['period'],
-            dpi=quality_settings['dpi'],
-            aspect_ratio=aspect_ratio,
-            theme_name=theme,
-            patch_overlay=True
-        )
+        try:
+            VideoEngine.render_race(
+                df,
+                temp_path,
+                title=video_title,
+                progress_callback=worker_progress,
+                steps_per_period=quality_settings['steps'],
+                period_length=quality_settings['period'],
+                dpi=quality_settings['dpi'],
+                aspect_ratio=aspect_ratio,
+                theme_name=theme,
+                patch_overlay=True
+            )
 
-        # Add Audio & Finalize Video
-        VideoEngine.add_audio(temp_path, output_filepath, music_file=job.custom_audio_id)
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+            # Add Audio & Finalize Video
+            VideoEngine.add_audio(temp_path, output_filepath, music_file=job.custom_audio_id)
+        finally:
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
 
         # Set job completion details
         expires_at = utc_now() + timedelta(seconds=settings.EPHEMERAL_TTL_SECONDS)
