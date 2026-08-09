@@ -24,10 +24,12 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create necessary runtime storage directories
+RUN mkdir -p output/ephemeral cache assets
+
 # Copy source code and assets
 COPY src/ ./src/
 COPY assets/ ./assets/
-COPY output/ ./output/
 
 # Expose FastAPI backend port
 EXPOSE 8000
