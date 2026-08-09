@@ -33,6 +33,7 @@ celery_conf = {
     "timezone": "UTC",
     "enable_utc": True,
     "task_track_started": True,
+    "task_clock_drift_threshold": 300.0,
 }
 
 if redis_url.startswith("rediss://"):
