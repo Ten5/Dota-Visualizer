@@ -6,7 +6,7 @@ from src.data.strategies import (
     WinsStrategy, 
     WinRateStrategy,
     ItemRaceStrategy,
-    HeroVersatilityStrategy
+    HeroImpactStrategy
 )
 from tests.test_utils import (
     create_sample_matches,
@@ -99,12 +99,12 @@ class TestItemRaceStrategy(StrategyTestBase):
         })
 
 
-class TestHeroVersatilityStrategy(StrategyTestBase):
-    """Tests for HeroVersatilityStrategy."""
+class TestHeroImpactStrategy(StrategyTestBase):
+    """Tests for HeroImpactStrategy."""
 
-    def test_versatility_processing(self):
-        """Test that hero versatility processes valid accumulative DataFrame."""
-        strategy = HeroVersatilityStrategy()
+    def test_impact_processing(self):
+        """Test that hero impact rating processes valid accumulative DataFrame."""
+        strategy = HeroImpactStrategy()
         df, year = strategy.process(self.mock_matches, self.hero_map)
         self.assertFalse(df.empty)
         self.assertIn('Anti-Mage', df.columns)

@@ -5,3 +5,13 @@ matplotlib
 pillow
 opencv-python
 moviepy<2.0
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+pydantic-settings
+httpx
+slowapi
+pyjwt
+celery
+redis

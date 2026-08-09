@@ -98,11 +98,11 @@ class VideoEngine:
 
         if aspect_ratio == "9:16":
             width, height = 720, 1280
-            chart_top, chart_bottom = 220, 1150
+            chart_top, chart_bottom = 260, 1200
             chart_left, chart_right = 40, 680
         else:
             width, height = 1280, 720
-            chart_top, chart_bottom = 130, 650
+            chart_top, chart_bottom = 205, 685
             chart_left, chart_right = 60, 1100
 
         chart_width = chart_right - chart_left
@@ -114,9 +114,9 @@ class VideoEngine:
         cols = list(df.columns)
         color_map = {col: COLOR_PALETTE[i % len(COLOR_PALETTE)] for i, col in enumerate(cols)}
 
-        font_title = load_font(32 if aspect_ratio == "9:16" else 34, bold=True)
-        font_subtitle = load_font(18 if aspect_ratio == "9:16" else 20, bold=False)
-        font_date = load_font(44 if aspect_ratio == "9:16" else 54, bold=True)
+        font_title = load_font(30 if aspect_ratio == "9:16" else 32, bold=True)
+        font_subtitle = load_font(16 if aspect_ratio == "9:16" else 18, bold=False)
+        font_date = load_font(26 if aspect_ratio == "9:16" else 30, bold=True)
         font_patch = load_font(20 if aspect_ratio == "9:16" else 24, bold=True)
         font_bar_name = load_font(18 if aspect_ratio == "9:16" else 20, bold=True)
         font_val = load_font(18 if aspect_ratio == "9:16" else 20, bold=True)
@@ -213,21 +213,25 @@ class VideoEngine:
                 canvas_img = Image.new("RGBA", (width, height), theme["bg"])
                 draw = ImageDraw.Draw(canvas_img)
 
-                title_lines = title.split('\n')
-                draw.text((30 if aspect_ratio == "9:16" else 50, 25), title_lines[0], font=font_title, fill=theme["text_header"])
-                if len(title_lines) > 1:
-                    draw.text((30 if aspect_ratio == "9:16" else 50, 70), title_lines[1], font=font_subtitle, fill=theme["text_sub"])
-
+                # Draw Avatar Image (Left of Title)
+                title_x = 30 if aspect_ratio == "9:16" else 40
                 if avatar_cv is not None:
                     av_pil = Image.fromarray(avatar_cv)
-                    canvas_img.paste(av_pil, (width - 90 if aspect_ratio == "9:16" else width - 110, 25), av_pil)
+                    canvas_img.paste(av_pil, (title_x, 20), av_pil)
+                    title_x += 85
 
-                # Date & Patch Overlay
-                date_x = width - (320 if aspect_ratio == "9:16" else 420)
-                date_y = height - (110 if aspect_ratio == "9:16" else 95)
-                draw.text((date_x, date_y), date_str, font=font_date, fill=theme["date_color"])
+                title_lines = title.split('\n')
+                draw.text((title_x, 15), title_lines[0], font=font_title, fill=theme["text_header"])
+                if len(title_lines) > 1:
+                    draw.text((title_x, 50), title_lines[1], font=font_subtitle, fill=theme["text_sub"])
+
+                # Date & Patch Overlay (Stacked vertically with generous buffer space above top bar)
+                date_x = title_x
                 if patch_str:
-                    draw.text((date_x, date_y - 28), patch_str, font=font_patch, fill=theme["patch_color"])
+                    draw.text((date_x, 82 if aspect_ratio == "9:16" else 78), patch_str, font=font_patch, fill=theme["patch_color"])
+                    draw.text((date_x, 112 if aspect_ratio == "9:16" else 105), date_str, font=font_date, fill=theme["date_color"])
+                else:
+                    draw.text((date_x, 90 if aspect_ratio == "9:16" else 85), date_str, font=font_date, fill=theme["date_color"])
 
                 for idx in active_indices:
                     rank_pos = ranks_curr[idx]

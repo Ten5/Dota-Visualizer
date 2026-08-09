@@ -9,12 +9,14 @@ from src.data.strategies import (
     MatchesPlayedStrategy, WinsStrategy, WinRateStrategy, Top20WinRateStrategy,
     ItemRaceStrategy, RoleEvolutionStrategy, KDAStrategy, TowerDamageStrategy, 
     LaneStrategy, DamageDealtStrategy, TotalDeathsStrategy, TotalGoldStrategy,
-    HeroVersatilityStrategy
+    HeroImpactStrategy, MultiKillStrategy, FarmingEfficiencyStrategy,
+    WinStreakStrategy, RoshanClaimsStrategy, BlitzWinsStrategy
 )
 from src.visualizer.engine import VideoEngine
 
 STRATEGIES = {
     "Matches Played": MatchesPlayedStrategy,
+    "Hero Masteries": MatchesPlayedStrategy,
     "Total Wins": WinsStrategy,
     "Win Rate % (Top 20 Mains)": Top20WinRateStrategy,
     "Most Purchased Items": ItemRaceStrategy,
@@ -25,11 +27,17 @@ STRATEGIES = {
     "Total Damage (Millions)": DamageDealtStrategy,
     "Total Deaths": TotalDeathsStrategy,
     "Total Gold (Millions)": TotalGoldStrategy,
-    "Hero Versatility": HeroVersatilityStrategy
+    "Hero Impact Score": HeroImpactStrategy,
+    "Multi-Kill & Rampage Race": MultiKillStrategy,
+    "GPM Farming Efficiency": FarmingEfficiencyStrategy,
+    "Win Streak Master": WinStreakStrategy,
+    "Roshan & Aegis Claims": RoshanClaimsStrategy,
+    "Blitz Stomper (Fastest Victory)": BlitzWinsStrategy
 }
 
 FILENAME_MAP = {
     "Matches Played": "Matches",
+    "Hero Masteries": "Masteries",
     "Total Wins": "Wins",
     "Win Rate % (Top 20 Mains)": "WinRate",
     "Most Purchased Items": "Items",
@@ -40,7 +48,12 @@ FILENAME_MAP = {
     "Total Damage (Millions)": "Damage",
     "Total Deaths": "Deaths",
     "Total Gold (Millions)": "Gold",
-    "Hero Versatility": "Versatility"
+    "Hero Impact Score": "Impact",
+    "Multi-Kill & Rampage Race": "MultiKills",
+    "GPM Farming Efficiency": "Farming",
+    "Win Streak Master": "Streak",
+    "Roshan & Aegis Claims": "Roshan",
+    "Blitz Stomper (Fastest Victory)": "Blitz"
 }
 
 QUALITY_PRESETS = {

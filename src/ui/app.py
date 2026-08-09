@@ -12,7 +12,8 @@ from src.data.strategies import (
     MatchesPlayedStrategy, WinsStrategy, WinRateStrategy, Top20WinRateStrategy,
     ItemRaceStrategy, RoleEvolutionStrategy, KDAStrategy, TowerDamageStrategy, 
     LaneStrategy, DamageDealtStrategy, TotalDeathsStrategy, TotalGoldStrategy,
-    HeroVersatilityStrategy
+    HeroImpactStrategy, MultiKillStrategy, FarmingEfficiencyStrategy,
+    WinStreakStrategy, RoshanClaimsStrategy, BlitzWinsStrategy
 )
 from src.visualizer.engine import VideoEngine
 
@@ -30,41 +31,34 @@ def open_file_or_folder(path):
             subprocess.call(["xdg-open", path])
         return True
     except Exception as e:
-        print(f"Error opening {path}: {e}")
+        print(f"Error opening path {path}: {e}")
         return False
 
 class DotaRaceApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Dota 2 History Visualizer")
         
-        # Center Window on Screen
+        self.title("Dota 2 History Visualizer - Race Animation Engine")
+        self.geometry("960x780")
         try:
-            screen_w = self.winfo_screenwidth()
-            screen_h = self.winfo_screenheight()
-            x = max((screen_w - 760) // 2, 0)
-            y = max((screen_h - 780) // 2, 0)
-            self.geometry(f"760x780+{x}+{y}")
+            self.minsize(800, 650)
         except Exception:
-            self.geometry("760x780")
-            
-        self.resizable(False, False)
-
-        # Set Application Window Icon
-        icon_path = os.path.join("assets", "icon.png")
-        if os.path.exists(icon_path):
-            try:
-                from PIL import Image, ImageTk
-                icon_img = ImageTk.PhotoImage(Image.open(icon_path).resize((64, 64)))
-                self.wm_iconphoto(True, icon_img)
-            except Exception as e:
-                pass
-        
-        ctk.set_appearance_mode("Dark")
+            pass
+        ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
         
+        self.api = DotaAPI()
+        self.is_processing = False
+        
         self.strategies = {
+            "Hero Impact Score": HeroImpactStrategy,
+            "Multi-Kill & Rampage Race": MultiKillStrategy,
+            "GPM Farming Efficiency": FarmingEfficiencyStrategy,
+            "Win Streak Master": WinStreakStrategy,
+            "Roshan & Aegis Claims": RoshanClaimsStrategy,
+            "Blitz Stomper (Fastest Victory)": BlitzWinsStrategy,
             "Matches Played": MatchesPlayedStrategy,
+            "Hero Masteries": MatchesPlayedStrategy,
             "Total Wins": WinsStrategy,
             "Win Rate % (Top 20 Mains)": Top20WinRateStrategy,
             "Most Purchased Items": ItemRaceStrategy,
@@ -74,12 +68,18 @@ class DotaRaceApp(ctk.CTk):
             "Laning Preference": LaneStrategy,
             "Total Damage (Millions)": DamageDealtStrategy,
             "Total Deaths": TotalDeathsStrategy,
-            "Total Gold (Millions)": TotalGoldStrategy,
-            "Hero Versatility": HeroVersatilityStrategy
+            "Total Gold (Millions)": TotalGoldStrategy
         }
         
         self.filename_map = {
+            "Hero Impact Score": "Impact",
+            "Multi-Kill & Rampage Race": "MultiKills",
+            "GPM Farming Efficiency": "Farming",
+            "Win Streak Master": "Streak",
+            "Roshan & Aegis Claims": "Roshan",
+            "Blitz Stomper (Fastest Victory)": "Blitz",
             "Matches Played": "Matches",
+            "Hero Masteries": "Masteries",
             "Total Wins": "Wins",
             "Win Rate % (Top 20 Mains)": "WinRate",
             "Most Purchased Items": "Items",
@@ -89,8 +89,7 @@ class DotaRaceApp(ctk.CTk):
             "Laning Preference": "Lanes",
             "Total Damage (Millions)": "Damage",
             "Total Deaths": "Deaths",
-            "Total Gold (Millions)": "Gold",
-            "Hero Versatility": "Versatility"
+            "Total Gold (Millions)": "Gold"
         }
 
         self.quality_presets = {
