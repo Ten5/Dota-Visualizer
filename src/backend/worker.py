@@ -144,13 +144,18 @@ def process_render_job(job_id: str, db: Session):
         temp_path = os.path.abspath(os.path.join(output_dir, f"temp_{output_filename}"))
         video_title = f"{player_name}\n{strategy.name} ({start_year}-Present)"
 
+        last_progress = [75]
+
         def worker_progress(p):
-            # Map progress p (0.0 to 1.0) to 75% -> 95%
-            job.progress = min(95, int(75 + p * 20))
-            try:
-                db.commit()
-            except Exception:
-                pass
+            # Map progress p (0.0 to 1.0) to 75% -> 95% (throttled to 5% increments)
+            current_p = min(95, int(75 + p * 20))
+            if current_p >= last_progress[0] + 5 or current_p == 95:
+                last_progress[0] = current_p
+                try:
+                    job.progress = current_p
+                    db.commit()
+                except Exception:
+                    pass
 
         VideoEngine.render_race(
             df,
