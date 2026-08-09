@@ -27,12 +27,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Create necessary runtime storage directories
 RUN mkdir -p output/ephemeral cache assets
 
-# Copy source code and assets
+# Copy source code, assets, and startup script
 COPY src/ ./src/
 COPY assets/ ./assets/
+COPY start.sh ./start.sh
+RUN chmod +x ./start.sh
 
 # Expose FastAPI backend port
 EXPOSE 8050
 
-# Default command: Launch FastAPI Uvicorn Server
-CMD ["uvicorn", "src.backend.main:app", "--host", "0.0.0.0", "--port", "8050"]
+# Default command: Launch startup script (runs both FastAPI & background worker)
+CMD ["/app/start.sh"]
