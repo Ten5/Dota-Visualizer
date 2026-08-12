@@ -48,7 +48,8 @@ class TestRenderingService(unittest.TestCase):
 
     @patch("src.visualizer.engine.VideoEngine.add_audio")
     @patch("src.visualizer.engine.VideoEngine.render_race")
-    def test_process_render_job_success(self, mock_render_race, mock_add_audio):
+    @patch("src.data.api.DotaAPI.get_hero_map", return_value={1: "Anti-Mage", 2: "Axe"})
+    def test_process_render_job_success(self, mock_hero_map, mock_render_race, mock_add_audio):
         # Insert dummy matches across 2 distinct months
         match1 = MatchModel(
             match_id=999,

@@ -81,8 +81,11 @@ def process_render_job(job_id: str, db: Session):
         if not matches_dicts:
             raise ValueError(f"No match history found for player {job.player_id}")
 
+        metric_name = job.metric or "Hero Impact Score"
+
         job.progress = 60
         db.commit()
+        logger.info(f"[{job_id}] 60% - Parsed {len(matches_dicts)} matches. Computing strategy dataframe for '{metric_name}'...")
 
         from src.data.api import DotaAPI
         from src.data.strategies import (
@@ -127,6 +130,7 @@ def process_render_job(job_id: str, db: Session):
 
         job.progress = 75
         db.commit()
+        logger.info(f"[{job_id}] 75% - Dataframe computed ({len(df)} periods, {start_year}-Present). Launching OpenCV VideoEngine frame renderer...")
 
         # Render video using VideoEngine
         aspect_ratio = job.aspect_ratio or "9:16"

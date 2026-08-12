@@ -24,7 +24,7 @@ class DotaAPI:
             
         url = f"{DotaAPI.BASE_URL}/heroes"
         try:
-            resp = requests.get(url)
+            resp = requests.get(url, timeout=10)
             data = resp.json()
             DotaAPI._hero_map_cache = {h['id']: h['localized_name'] for h in data}
             return DotaAPI._hero_map_cache
@@ -40,7 +40,7 @@ class DotaAPI:
             
         url = f"{DotaAPI.BASE_URL}/heroes"
         try:
-            resp = requests.get(url)
+            resp = requests.get(url, timeout=10)
             role_map = {}
             for h in resp.json():
                 roles = h.get('roles', [])
@@ -59,7 +59,7 @@ class DotaAPI:
 
         url = "https://api.opendota.com/api/constants/items"
         try:
-            resp = requests.get(url)
+            resp = requests.get(url, timeout=10)
             data = resp.json()
             item_map = {}
             for key, val in data.items():
@@ -139,7 +139,7 @@ class DotaAPI:
             params = {'limit': 1000, 'offset': offset}
             
             try:
-                resp = requests.get(url, params=params)
+                resp = requests.get(url, params=params, timeout=15)
                 data = resp.json()
                 
                 if not data or not isinstance(data, list): break
