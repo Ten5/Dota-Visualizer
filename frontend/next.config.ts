@@ -15,13 +15,13 @@ const cspHeader = `
     script-src 'self' 'unsafe-eval' 'unsafe-inline';
     style-src 'self' 'unsafe-inline';
     img-src 'self' blob: data: https:;
-    media-src 'self' blob: data: http://localhost:8050 http://127.0.0.1:8050 http://localhost:8000 http://127.0.0.1:8000 ${dynamicApiOrigin} https:;
+    media-src 'self' blob: data: http: https:;
     font-src 'self' data:;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
-    connect-src 'self' http://localhost:8050 http://127.0.0.1:8050 http://localhost:8000 http://127.0.0.1:8000 ${dynamicApiOrigin} https://*.onrender.com https://api.opendota.com https:;
+    connect-src 'self' blob: data: http: https: ws: wss:;
 `;
 
 const nextConfig: NextConfig = {

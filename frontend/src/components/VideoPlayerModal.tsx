@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { X, Download, Play, AlertCircle, CheckCircle2, Loader2, Clock } from "lucide-react";
-import { getRenderJobStatus } from "@/lib/api";
+import { getRenderJobStatus, getBackendMediaBaseUrl } from "@/lib/api";
 import { RenderJobResponse, RenderJobStatusResponse } from "@/lib/types";
 
 interface VideoPlayerModalProps {
@@ -18,28 +18,26 @@ export default function VideoPlayerModal({ job, onClose }: VideoPlayerModalProps
   });
 
   useEffect(() => {
-    if (jobStatus.status === "COMPLETED" || jobStatus.status === "FAILED" || jobStatus.status === "EXPIRED") {
+    if (jobStatus.status === "COMPLETED" || jobStatus.status === "FAILED") {
       return;
     }
 
     const interval = setInterval(async () => {
       try {
-        const updated = await getRenderJobStatus(job.job_id);
-        setJobStatus(updated);
-        if (updated.status === "COMPLETED" || updated.status === "FAILED" || updated.status === "EXPIRED") {
+        const latest = await getRenderJobStatus(job.job_id);
+        setJobStatus(latest);
+        if (latest.status === "COMPLETED" || latest.status === "FAILED") {
           clearInterval(interval);
         }
-      } catch (e) {
-        console.error("Error polling job status:", e);
+      } catch (err) {
+        console.error("Polling error", err);
       }
-    }, 1500);
+    }, 2500);
 
     return () => clearInterval(interval);
   }, [job.job_id, jobStatus.status]);
 
-  const backendBase = process.env.NEXT_PUBLIC_API_URL
-    ? process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/api\/v1\/?$/, "").replace(/\/+$/, "")
-    : "http://localhost:8050";
+  const backendBase = getBackendMediaBaseUrl();
 
   const fullVideoUrl = jobStatus.video_url
     ? `${backendBase}${jobStatus.video_url}`

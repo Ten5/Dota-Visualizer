@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { X, Film, Play, Download, Clock, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
-import { listPlayerRenderJobs } from "@/lib/api";
+import { listPlayerRenderJobs, getBackendMediaBaseUrl } from "@/lib/api";
 import { RenderJobResponse } from "@/lib/types";
 
 interface RecentVideosModalProps {
@@ -21,9 +21,7 @@ export default function RecentVideosModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activePreviewJobId, setActivePreviewJobId] = useState<string | null>(null);
 
-  const backendBase = process.env.NEXT_PUBLIC_API_URL
-    ? process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/api\/v1\/?$/, "").replace(/\/+$/, "")
-    : "http://localhost:8050";
+  const backendBase = getBackendMediaBaseUrl();
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);

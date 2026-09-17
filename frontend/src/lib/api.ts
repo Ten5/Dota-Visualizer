@@ -8,9 +8,20 @@ import {
   UserResponse,
 } from "./types";
 
-function getApiBaseUrl(): string {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!envUrl) return "http://localhost:8050/api/v1";
+export function getApiBaseUrl(): string {
+  let envUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8050/api/v1";
+
+  // When running client-side in the browser, if the user accessed via remote IP/hostname
+  // and envUrl is still pointing to localhost, dynamically map to current host at port 8050!
+  if (typeof window !== "undefined") {
+    const currentHost = window.location.hostname;
+    if (currentHost && currentHost !== "localhost" && currentHost !== "127.0.0.1") {
+      if (envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
+        envUrl = `${window.location.protocol}//${currentHost}:8050/api/v1`;
+      }
+    }
+  }
+
   const trimmed = envUrl.trim().replace(/\/+$/, "");
   if (trimmed.endsWith("/api/v1")) {
     return trimmed;
@@ -18,10 +29,12 @@ function getApiBaseUrl(): string {
   return `${trimmed}/api/v1`;
 }
 
-const API_BASE_URL = getApiBaseUrl();
+export function getBackendMediaBaseUrl(): string {
+  return getApiBaseUrl().replace(/\/api\/v1\/?$/, "");
+}
 
 export async function syncPlayerMatches(playerId: number): Promise<PlayerSyncResponse> {
-  const res = await fetch(`${API_BASE_URL}/players/${playerId}/sync`, {
+  const res = await fetch(`${getApiBaseUrl()}/players/${playerId}/sync`, {
     method: "POST",
   });
   if (!res.ok) {
@@ -32,7 +45,7 @@ export async function syncPlayerMatches(playerId: number): Promise<PlayerSyncRes
 }
 
 export async function getPlayerMatches(playerId: number): Promise<PlayerProfileMatchesResponse> {
-  const res = await fetch(`${API_BASE_URL}/players/${playerId}/matches`);
+  const res = await fetch(`${getApiBaseUrl()}/players/${playerId}/matches`);
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to fetch match history for player ${playerId}`);
@@ -41,7 +54,7 @@ export async function getPlayerMatches(playerId: number): Promise<PlayerProfileM
 }
 
 export async function submitRenderJob(payload: RenderJobPayload): Promise<RenderJobResponse> {
-  const res = await fetch(`${API_BASE_URL}/render/jobs`, {
+  const res = await fetch(`${getApiBaseUrl()}/render/jobs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -56,7 +69,7 @@ export async function submitRenderJob(payload: RenderJobPayload): Promise<Render
 }
 
 export async function getRenderJobStatus(jobId: string): Promise<RenderJobStatusResponse> {
-  const res = await fetch(`${API_BASE_URL}/render/jobs/${jobId}`);
+  const res = await fetch(`${getApiBaseUrl()}/render/jobs/${jobId}`);
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to poll status for job ${jobId}`);
@@ -65,9 +78,10 @@ export async function getRenderJobStatus(jobId: string): Promise<RenderJobStatus
 }
 
 export async function listPlayerRenderJobs(playerId?: number): Promise<RenderJobResponse[]> {
+  const baseUrl = getApiBaseUrl();
   const url = playerId && playerId > 0
-    ? `${API_BASE_URL}/render/jobs?player_id=${playerId}`
-    : `${API_BASE_URL}/render/jobs`;
+    ? `${baseUrl}/render/jobs?player_id=${playerId}`
+    : `${baseUrl}/render/jobs`;
   const res = await fetch(url);
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -77,20 +91,20 @@ export async function listPlayerRenderJobs(playerId?: number): Promise<RenderJob
 }
 
 export async function getSteamLoginUrl(): Promise<string> {
-  const res = await fetch(`${API_BASE_URL}/auth/steam/login`);
+  const res = await fetch(`${getApiBaseUrl()}/auth/steam/login`);
   if (!res.ok) throw new Error("Failed to fetch Steam login URL");
   const data = await res.json();
   return data.login_url;
 }
 
 export async function mockSteamLogin(steamId64: string): Promise<{ access_token: string }> {
-  const res = await fetch(`${API_BASE_URL}/auth/steam/callback?mock_steam_id64=${steamId64}`);
+  const res = await fetch(`${getApiBaseUrl()}/auth/steam/callback?mock_steam_id64=${steamId64}`);
   if (!res.ok) throw new Error("Failed to authenticate with mock Steam ID");
   return res.json();
 }
 
 export async function getAuthMe(token: string): Promise<UserResponse> {
-  const res = await fetch(`${API_BASE_URL}/auth/me`, {
+  const res = await fetch(`${getApiBaseUrl()}/auth/me`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -100,7 +114,7 @@ export async function getAuthMe(token: string): Promise<UserResponse> {
 }
 
 export async function createApiKey(name: string, token: string): Promise<ApiKeyResponse> {
-  const res = await fetch(`${API_BASE_URL}/keys`, {
+  const res = await fetch(`${getApiBaseUrl()}/keys`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -116,7 +130,7 @@ export async function createApiKey(name: string, token: string): Promise<ApiKeyR
 }
 
 export async function listApiKeys(token: string): Promise<ApiKeyResponse[]> {
-  const res = await fetch(`${API_BASE_URL}/keys`, {
+  const res = await fetch(`${getApiBaseUrl()}/keys`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -126,7 +140,7 @@ export async function listApiKeys(token: string): Promise<ApiKeyResponse[]> {
 }
 
 export async function revokeApiKey(keyId: number, token: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/keys/${keyId}`, {
+  const res = await fetch(`${getApiBaseUrl()}/keys/${keyId}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`,
